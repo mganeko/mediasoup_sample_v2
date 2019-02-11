@@ -185,7 +185,7 @@ wsServer.on('connection', function connection(ws) {
     else if (inMessage.type === 'client_notify') {
       const notification = inMessage.notification;
       console.log('client_notify. method=' + notification.method + ', target=' + notification.target);
-      handleNotify(peer, notification) 
+      handleNotify(notification) 
     }
     else {
       console.warn('WARN: -- UNKNOWN message.type:', inMessage.type);
@@ -236,7 +236,7 @@ wsServer.on('connection', function connection(ws) {
     }
 
     // --- handle notify ---
-    function handleNotify(peer, notification) {
+    function handleNotify(notification) {
       if (! peer) {
         console.error('ERROR: Cannot handle mediaSoup notification, no mediaSoup Peer');
         return;
