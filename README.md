@@ -31,6 +31,7 @@ git cloneします。
 $ npm install ws
 $ npm install express
 $ npm install mediasoup
+$ npm install socket.io
 ```
 or
 ```
@@ -44,7 +45,12 @@ npmモジュールをインストールします。mediasoupのインストー�
 
 # How to use
 
-## run server app
+## WebSocket sample
+
+### run server app
+
+Start server which include Web server and WebSocket server, SFU server.
+
 ```
 $ node mediasoup_sample_v2.js
 ```
@@ -56,18 +62,37 @@ $ npm start
 サーバーを起動します。Webサーバー、WebSocketによるシグナリングサーバー、SFUサーバーを兼ねています。
 
 
-## access with browser
-
-### bidirectional video chat  
+### access with browser
 
 * open [http://localhost:3000/](http://localhost:3000/) with Chrome or Firefox.
 * click [Start Video] button, then [Connect] button
 
-### 双方向ビデオチャット
-
 * ブラウザ（ChromeかFirefox）で [http://localhost:3000/](http://localhost:3000/) にアクセスします。
 * [Start Video] ボタンをクリックしてカメラとマイクを取得し、 [Connect] ボタンで通信を開始します
 
+## Socket.io sample
+
+### run server app
+
+Start server which include Web server and socket.io server, SFU server.
+
+```
+$ node mediasoup_sample_v2_socketio.js
+```
+or
+```
+$ npm run socketio
+```
+
+サーバーを起動します。Webサーバー、Socket.ioによるシグナリングサーバー、SFUサーバーを兼ねています。
+
+### access with browser
+
+* open [http://localhost:3000/index_socketio.html](http://localhost:3000/index_socketio.html) with Chrome or Firefox.
+* click [Start Video] button, then [Connect] button
+
+* ブラウザ（ChromeかFirefox）で [http://localhost:3000/index_socketio.html](http://localhost:3000/index_socketio.html) にアクセスします。
+* [Start Video] ボタンをクリックしてカメラとマイクを取得し、 [Connect] ボタンで通信を開始します
 
 # License / ライセンス
 
