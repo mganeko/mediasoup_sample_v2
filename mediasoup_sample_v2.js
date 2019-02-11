@@ -9,8 +9,9 @@
 // install
 //   npm install ws
 //   npm install express
-//   npm install mediasoup (v2)
-//
+//   npm install mediasoup
+// or
+//   npm install
 
 
 'use strict';
