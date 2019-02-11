@@ -1,0 +1,24 @@
+{
+  "name": "mediasoup_v2_sample",
+  "version": "0.8.0",
+  "description": "sample for multi-party video chat for mediasoup v2",
+  "main": "mediasoup_sample_v2.js",
+  "dependencies": {
+    "express": "^4.16.4",
+    "mediasoup": "^2.6.8",
+    "mediasoup-client": "^2.4.9",
+    "ws": "^6.1.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node mediasoup_sample_v2.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "WebRTC",
+    "mediasoup",
+    "node.js"
+  ],
+  "author": "mganeko",
+  "license": "MIT"
+}
