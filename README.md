@@ -5,9 +5,13 @@ Examples for WebRTC SFU mediasoup v2 with node.js (Multiple participants)
 * mediasoup Web site [https://mediasoup.org](https://mediasoup.org)
 * based on [mediasoup-sample by footnik](https://github.com/footniko/mediasoup-sample)
 * This sample is build for mediasoup v2.6. This does not work with mediasoup v1.x.
+* samples:
+  * multi-party with WebSocket
+  * multi-party with Socket.io
+  * multi-room, multi-party with Socket.io
 * TODO: samples for 1 way realtime streaming. 
 * TODO: TLS sample with WebSocket. 
-* TODO: socket.io sample, also socket.io with SSL.
+* TODO: TLS sample with socket.io.
 
 Node.jsで動くWebRTC SFU mediasoup v2のサンプルです。
 
@@ -93,6 +97,30 @@ $ npm run socketio
 
 * ブラウザ（ChromeかFirefox）で [http://localhost:3000/index_socketio.html](http://localhost:3000/index_socketio.html) にアクセスします。
 * [Start Video] ボタンをクリックしてカメラとマイクを取得し、 [Connect] ボタンで通信を開始します
+
+## Multi-room sample with Socket.io
+
+### run server app
+
+Start server which include Web server and socket.io server, SFU server.
+
+```
+$ node mediasoup_sample_v2_socketio_room.js
+```
+or
+```
+$ npm run room
+```
+
+サーバーを起動します。Webサーバー、Socket.ioによるシグナリングサーバー、SFUサーバーを兼ねています。
+
+### access with browser
+
+* open [http://localhost:3000/index_socketio.html](http://localhost:3000/index_socketio_room.html) with Chrome or Firefox.
+* click [Start Video] button, type room name, then [Connect] button
+
+* ブラウザ（ChromeかFirefox）で [http://localhost:3000/index_socketio.html](http://localhost:3000/index_socketio.html) にアクセスします。
+* [Start Video] ボタンをクリックしてカメラとマイクを取得し、 room名を入力してから、[Connect] ボタンで通信を開始します
 
 # License / ライセンス
 
