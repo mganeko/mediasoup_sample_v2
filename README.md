@@ -16,7 +16,7 @@ Examples for WebRTC SFU mediasoup v2 with node.js (Multiple participants)
 Node.jsで動くWebRTC SFU mediasoup v2のサンプルです。
 
 * v2.x用に作り直しました。v1.xでは動作しません。
-* [mediasoup-sample by footnikさんのmediasoup-sample](https://github.com/footniko/mediasoup-sample) を参考にしています
+* [footnikさんのmediasoup-sample](https://github.com/footniko/mediasoup-sample) を参考にしています
 
 
 
