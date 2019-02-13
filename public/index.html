@@ -179,8 +179,8 @@
     .then(() => {
       console.log('-- add local stream --');
       // ---- add local stream ---
-      const audioTrack = localStream.getAudioTracks()[0];
-      const videoTrack = localStream.getVideoTracks()[0];
+      const audioTrack = stream.getAudioTracks()[0];
+      const videoTrack = stream.getVideoTracks()[0];
 
       // Send local audio.
       micProducer = room.createProducer(audioTrack);
