@@ -134,9 +134,7 @@
       console.info("room joined:", peers);
       updateButtons();
 
-      // Create a Transport for sending local media.
-      //sendTransport = room.createTransport('send');
-
+      // ---- recvonly ---
       // Create a Transport for receiving media from remote Peers.
       recvTransport = room.createTransport('recv');
 
@@ -145,22 +143,6 @@
 
       console.log('--peers setup end --');
     })
-    /*---
-    .then(() => {
-      console.log('-- add local stream --');
-      // ---- add local stream ---
-      const audioTrack = stream.getAudioTracks()[0];
-      const videoTrack = stream.getVideoTracks()[0];
-
-      // Send local audio.
-      micProducer = room.createProducer(audioTrack);
-      micProducer.send(sendTransport);
-
-      // Send local video.
-      camProducer = room.createProducer(videoTrack);
-      camProducer.send(sendTransport);
-    })
-    ---*/
     .catch(err  => {
       console.error('catch error ater room.join()', err);
     });
@@ -297,41 +279,7 @@
 
   // ============ UI button ==========
 
-  /*--
-  function startMedia() {
-    if (localStream) {
-      console.warn('WARN: local media ALREADY started');
-      return;
-    }
-
-    navigator.mediaDevices.getUserMedia({ audio: true, video: true })
-    .then((stream) =>
-    {
-      localStream = stream;
-      playVideo(localVideo, localStream);
-      updateButtons();
-    })
-    .catch(err => {
-      console.error('media ERROR:', err);
-    });
-  }
-
-  function stopMedia() {
-    if (localStream) {
-      pauseVideo(localVideo,);
-      stopLocalStream(localStream);
-      localStream = null;
-    }
-    updateButtons();
-  }
-  --*/
-
   function connect() {
-    //if (! localStream) {
-    //  console.warn('WARN: local media NOT READY');
-    //  return;
-    //}
-
     // --- prepare room ---
     let roomName =  getRoomName();
     if ( (roomName) && (roomName !== '') ) {
@@ -361,8 +309,6 @@
   // ---- UI control ----
   function updateButtons() {
     if (room.joined) {
-      //disableElement('start_video_button');
-      //disableElement('stop_video_button');
       disableElement('connect_button');
       enabelElement('disconnect_button');
       disableElement('room_name');
@@ -370,16 +316,7 @@
     else {
       disableElement('disconnect_button');
       enabelElement('room_name');
-      //if (localStream) {
-      //  disableElement('start_video_button');
-      //  enabelElement('stop_video_button');
-        enabelElement('connect_button');
-      //}
-      //else {
-      //  enabelElement('start_video_button');
-      //  disableElement('stop_video_button');
-      //  disableElement('connect_button');        
-      //}
+      enabelElement('connect_button');
     }
   }
 

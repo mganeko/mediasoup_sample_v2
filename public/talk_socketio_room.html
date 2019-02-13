@@ -130,11 +130,9 @@
       console.info("room joined:", peers);
       updateButtons();
 
+      // --- sendonly ---
       // Create a Transport for sending local media.
       sendTransport = room.createTransport('send');
-
-      // Create a Transport for receiving media from remote Peers.
-      //recvTransport = room.createTransport('recv');
 
       // --- setup peers ---
       peers.forEach(peer => handlePeer(peer));
@@ -166,48 +164,21 @@
     if (consumers.length > 0) {
       console.warn('consumers SHOULD BE zero');
     }
+    // -- DO NOT receive --
     //consumers.forEach(consumer => handleConsumer(consumer));
 
     peer.on('close', function() {
       console.log('--- remote peer clolsed. name/id=' + peer.name);
-
-      // --- stop remote video ---
-      const id = peer.name;
-      //removeRemoteVideo(id);
     });
     
     peer.on('newconsumer', function(consumer) {
       console.log('--newconsumer');
 
-      // -- setup new consumser --
+      // -- DO NOT receive --
       console.warn('new consumer, BUT IGNORE');
       //handleConsumer(consumer);
     });
   }
-
-  /*--
-  function handleConsumer(consumer) {
-    console.log('handleConsumer peer=' + consumer.peer.name);
-    if (recvTransport) {
-      consumer.receive(recvTransport)
-      .then((track) => {
-        console.log('-- remoteStream track kind=' + track.kind);
-        const id = consumer.peer.name;
-        addRemoteTrack(id, track);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-    }
-    else {
-      console.error('recvTransport NOT READY');
-    }
-
-    consumer.on('close', () => {
-      console.log('---- Consumer closed ----');
-    });
-  }
-  --*/
 
   // =========== media handling ========== 
   function stopLocalStream(stream) {
@@ -235,67 +206,6 @@
     element.pause();
     element.srcObject = null;
   }
-
-  /*---
-  function addRemoteTrack(id, track) {
-    let video = findRemoteVideo(id);
-    if (! video) {
-      video = addRemoteVideo(id);
-    }
-
-    if (video.srcObject) {
-      video.srcObject.addTrack(track);
-      return;
-    }
-
-    const newStream = new MediaStream();
-    newStream.addTrack(track);
-    playVideo(video, newStream).catch(err => { console.error('media ERROR:', err)});
-  }
-
-  function addRemoteVideo(id) {
-    let existElement = findRemoteVideo(id);
-    if (existElement) {
-      console.warn('remoteVideo element ALREADY exist for id=' + id);
-      return existElement;
-    }
-    
-    let element = document.createElement('video');
-    remoteContainer.appendChild(element);
-    element.id = 'remote_' + id;
-    element.width = 240;
-    element.height = 180;
-    element.volume = 0;
-    //element.controls = true;
-    return element;
-  }
-  
-  function findRemoteVideo(id) {
-    let element = document.getElementById('remote_' + id);
-    return element;
-  }
-
-  function removeRemoteVideo(id) {
-    console.log(' ---- removeRemoteVideo() id=' + id);
-    let element = document.getElementById('remote_' + id);
-    if (element) {
-      element.pause();
-      element.srcObject = null;
-      remoteContainer.removeChild(element);
-    }
-    else {
-      console.log('child element NOT FOUND');
-    }
-  }
-
-  function removeAllRemoteVideo() {
-    while (remoteContainer.firstChild) {
-      remoteContainer.firstChild.pause();
-      remoteContainer.firstChild.srcObject = null;
-      remoteContainer.removeChild(remoteContainer.firstChild);
-    }
-  }
-  ---*/
 
   // ============ UI button ==========
 
