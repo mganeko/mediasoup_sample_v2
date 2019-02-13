@@ -9,7 +9,7 @@ Examples for WebRTC SFU mediasoup v2 with node.js (Multiple participants)
   * multi-party with WebSocket
   * multi-party with Socket.io
   * multi-room, multi-party with Socket.io
-* TODO: samples for 1 way realtime streaming. 
+  * multi-room, 1 way sample (talk/watch) with Socket.io
 * TODO: TLS sample with WebSocket. 
 * TODO: TLS sample with socket.io.
 
@@ -116,11 +116,44 @@ $ npm run room
 
 ### access with browser
 
-* open [http://localhost:3000/index_socketio.html](http://localhost:3000/index_socketio_room.html) with Chrome or Firefox.
+* open [http://localhost:3000/index_socketio_room.html](http://localhost:3000/index_socketio_room.html) with Chrome or Firefox.
 * click [Start Video] button, type room name, then [Connect] button
 
-* ブラウザ（ChromeかFirefox）で [http://localhost:3000/index_socketio.html](http://localhost:3000/index_socketio.html) にアクセスします。
+* ブラウザ（ChromeかFirefox）で [http://localhost:3000/index_socketio_room.html](http://localhost:3000/index_socketio_room.html) にアクセスします。
 * [Start Video] ボタンをクリックしてカメラとマイクを取得し、 room名を入力してから、[Connect] ボタンで通信を開始します
+
+## Multi-room 1 way sample with Socket.io
+
+### run server app
+
+Start server which include Web server and socket.io server, SFU server.
+
+```
+$ node mediasoup_sample_v2_socketio_room.js
+```
+or
+```
+$ npm run room
+```
+
+サーバーを起動します。Webサーバー、Socket.ioによるシグナリングサーバー、SFUサーバーを兼ねています。
+
+### access with browser, talk side (up-stream)
+
+* open [http://localhost:3000/talk_socketio_room.html](http://localhost:3000/talk_socketio_room.html) with Chrome or Firefox.
+* click [Start Video] button, type room name, then [Connect] button
+
+* ブラウザ（ChromeかFirefox）で [http://localhost:3000/talk_socketio_room.html](http://localhost:3000/talk_socketio.html) にアクセスします。
+* [Start Video] ボタンをクリックしてカメラとマイクを取得し、 room名を入力してから、[Connect] ボタンで送信を開始します
+
+### access with browser, watch side (down-stream)
+
+* open [http://localhost:3000/watch_socketio_room.html](http://localhost:3000/talk_socketio_room.html) with Chrome or Firefox.
+* type room name, then click [Connect] button
+
+* ブラウザ（ChromeかFirefox）で [http://localhost:3000/watch_socketio_room.html](http://localhost:3000/watch_socketio_room.html) にアクセスします。
+* room名を入力してから、[Connect] ボタンをクリックして受信を開始します
+
 
 # License / ライセンス
 
