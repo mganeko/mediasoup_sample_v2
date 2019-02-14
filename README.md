@@ -5,6 +5,7 @@ Examples for WebRTC SFU mediasoup v2 with node.js (Multiple participants)
 * mediasoup Web site [https://mediasoup.org](https://mediasoup.org)
 * based on [mediasoup-sample by footnik](https://github.com/footniko/mediasoup-sample)
 * This sample is build for mediasoup v2.6. This does not work with mediasoup v1.x.
+* This sample is check on macOS 10.13 High Sierra.
 * samples:
   * multi-party with WebSocket
   * multi-party with Socket.io
@@ -17,6 +18,8 @@ Node.jsで動くWebRTC SFU mediasoup v2のサンプルです。
 
 * v2.x用に作り直しました。v1.xでは動作しません。
 * [footnikさんのmediasoup-sample](https://github.com/footniko/mediasoup-sample) を参考にしています
+* macOS 10.13 High Sierra で動作確認しています
+
 
 
 
