@@ -18,7 +18,7 @@ Node.jsで動くWebRTC SFU mediasoup v2のサンプルです。
 
 * v2.x用に作り直しました。v1.xでは動作しません。
 * [footnikさんのmediasoup-sample](https://github.com/footniko/mediasoup-sample) を参考にしています
-* macOS 10.13 High Sierra で動作確認しています
+* macOS 10.13 High Sierraで動作確認しています
 
 
 
@@ -48,6 +48,23 @@ $ npm install
 Python 2, make, g++ or clang are required for installing mediasoup.
 
 npmモジュールをインストールします。mediasoupのインストールにはPython 2, make, g++かclangが必要です。
+
+### Tips
+
+While npm install, if you got WARNING such as:
+
+```
+npm WARN lifecycle mediasoup@2.6.9~postinstall: cannot run in wd %s %s (wd=%s) mediasoup@2.6.9 make Release -C worker 
+```
+
+then go to worker directory and make directly.
+
+```
+$ cd node_modules/mediasoup/worker/
+$ make
+```
+
+npm install中にworkerのビルドに失敗したワーニングが出た場合は、workerのディレクトリに移動して直接makeしてください。
 
 
 # How to use
