@@ -181,6 +181,7 @@ $ npm run room
   * useHttps: true
   * httpsKeyFile: _set path to your key file_
   * httpsCertFile: _set path to your certificate and chain file_
+* then, start server
 
 ```
   useHttps : true,
@@ -188,6 +189,14 @@ $ npm run room
   httpsCertFile: 'SET_PATH_TO_YOUR_CERTIFICATE_AND_CHAIN_FILE', 
 ```
 
+https / wssを使うためには
+
+* options_default.jsをoptions.jsにコピーし
+* options.jsを編集
+  * useHttps: true
+  * httpsKeyFile: keyファイルのパス
+  * httpsCertFile: certfファイルのパス
+* サーバーを起動
 
 # License / ライセンス
 
