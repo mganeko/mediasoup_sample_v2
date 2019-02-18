@@ -174,6 +174,20 @@ $ npm run room
 * ブラウザ（ChromeかFirefox）で [http://localhost:3000/watch_socketio_room.html](http://localhost:3000/watch_socketio_room.html) にアクセスします。
 * room名を入力してから、[Connect] ボタンをクリックして受信を開始します
 
+# use https / wss
+
+* copy options_default.js to options.js
+* edit options.js
+  * useHttps: true
+  * httpsKeyFile: _set path to your key file_
+  * httpsCertFile: _set path to your certificate and chain file_
+
+```
+  useHttps : true,
+  httpsKeyFile: 'SET_PATH_TO_YOUR_KEY_FILE',
+  httpsCertFile: 'SET_PATH_TO_YOUR_CERTIFICATE_AND_CHAIN_FILE', 
+```
+
 
 # License / ライセンス
 
