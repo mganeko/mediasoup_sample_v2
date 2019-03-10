@@ -1,0 +1,527 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="charset=UTF-8" />
+    <title>mediasoup v2 multi room</title>
+    <!--
+   // mediasoup_sample_v2
+   //   https://github.com/mganeko/mediasoup_sample_v2
+   //   mediasoup_sample is provided under MIT license
+   //
+   //   This sample is using https://github.com/versatica/mediasoup
+   //   This sample is based on https://github.com/footniko/mediasoup-sample
+ -->
+    <script src="js/mediasoup-client.min.js"></script>
+    <script src="socket.io/socket.io.js"></script>
+    <style>
+        .bar {
+            border: rgb(223, 223, 223) solid 1px;
+            height: 50px;
+            background-color: rgb(230, 230, 230);
+        }
+
+        .outer_h {
+            display: grid;
+            grid-template-columns: 124px 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        .pannel_h {
+            height: 100%;
+            width: 122px;
+        }
+
+        .outer_v {
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: 100px 1fr;
+        }
+
+        .pannel_v {
+            border: red solid 1px;
+            width: 100%;
+        }
+
+        .wrapper {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: 100px 1fr;
+            column-gap: 4px;
+            row-gap: 4px;
+        }
+
+        .remote_video {
+            border: rgb(192, 192, 192) solid 1px;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body onload="calcVideoHorzVertCount(); resizeVideo()" onresize="resizeVideo()">
+    <div id="button_bar" class="bar" style="height:50px;">
+        mediasoup v2 with socket.io, multi-room, GUI trial<br />
+        <button id="start_video_button" onclick="startMedia();">Start Media</button>
+        <button id="stop_video_button" onclick="stopMedia();">Stop Media</button>
+        &nbsp;
+        <input type="text" id="room_name" placeholder="room name" />
+        <button id="connect_button" onclick="connect();">Connect</button>
+        <button id="disconnect_button" onclick="dissconnect();">Disconnect</button>
+    </div>
+    <div class="outer_h">
+        <div id="local_pannel" class="pannel_h" style="width: 122px;">
+            local video<br />
+            <video id="local_video" autoplay style="width: 120px; height: 90px; border: 1px solid black;"></video>
+            <span id="state_span"></span>
+        </div>
+        <!-- remote video<br /> -->
+        <div id="remote_container" class="wrapper">
+            <!--
+            <div class="remote_video">a</div>
+            <div class="remote_video">b</div>
+            <div class="remote_video">c</div>
+            <div class="remote_video">d</div>
+            -->
+        </div>
+    </div>
+</body>
+<script>
+    const localVideo = document.getElementById('local_video');
+    const remoteContainer = document.getElementById('remote_container');
+    //const remoteVideo = document.getElementById('remote_video');
+    const stateSpan = document.getElementById('state_span');
+    const roomName = document.getElementById('room_name');
+    let localStream = null;
+    let clientId = null;
+    //let roomId = 'anther_room';
+
+    // =========== socket.io ========== 
+    const socket = io.connect('/');
+    socket.on('connect', function (evt) {
+        //console.log('socket.io connected. enter room=' + room );
+        //socket.emit('enter', room);
+        console.log('socket.io connected()');
+    });
+    socket.on('error', function (err) {
+        console.error('socket.io ERROR:', err);
+    });
+    socket.on('disconnect', function (evt) {
+        console.log('socket.io disconnect:', evt);
+    });
+    socket.on('message', function (message) {
+        console.log('socket.io message:', message);
+        if (message.type === 'welcome') {
+            if (socket.id !== message.id) {
+                console.warn('WARN: something wrong with clientID', socket.io, message.id);
+            }
+
+            clientId = message.id;
+            console.log('connected to server. clientId=' + clientId);
+        }
+        else if (message.type === 'server_notify') {
+            const notification = message.notification;
+            console.debug('New notification came from server:', notification);
+            room.receiveNotification(notification);
+        }
+        else {
+            console.error('UNKNOWN message from server:', message);
+        }
+    });
+
+    function sendRequest(request, callback, errback) {
+        socket.emit('client_request', request, (err, response) => {
+            if (!err) {
+                // Success response, so pass the mediasoup response to the local Room.
+                callback(response);
+            } else {
+                errback(err);
+            }
+        });
+    }
+
+    function sendNotify(notification) {
+        socket.emit('client_notify', notification);
+    }
+
+    function prepareRoom(roomId) {
+        socket.emit('prepare_room', roomId);
+    }
+
+    // =========== mediasoup ========== 
+    console.log('=== Mediasoup Device support:', mediasoupClient.isDeviceSupported());
+
+    const room = new mediasoupClient.Room();
+    let micProducer = null;
+    let camProducer = null;
+    let sendTransport = null;
+    let recvTransport = null;
+
+    room.on('request', function (request, callback, errback) {
+        console.log('--- on request, method=' + request.method);
+        console.log(request);
+        sendRequest(request, callback, errback);
+    });
+    room.on('notify', function (notification) {
+        console.log('--- notify from local room:', notification);
+        sendNotify(notification);
+
+    });
+    room.on('newpeer', function (peer) {
+        console.log('=== newpeer ====');
+        handlePeer(peer);
+    });
+
+
+    function joinRoom(peername, stream) {
+        if (room.joined) {
+            console.warn('ALREADY joining room');
+            return;
+        }
+
+        room.join(peername)
+            .then((peers) => {
+                console.info("room joined:", peers);
+                updateButtons();
+
+                // Create a Transport for sending local media.
+                sendTransport = room.createTransport('send');
+
+                // Create a Transport for receiving media from remote Peers.
+                recvTransport = room.createTransport('recv');
+
+                // --- setup peers ---
+                peers.forEach(peer => handlePeer(peer));
+
+                console.log('--peers setup end --');
+            })
+            .then(() => {
+                console.log('-- add local stream --');
+                // ---- add local stream ---
+                const audioTrack = stream.getAudioTracks()[0];
+                const videoTrack = stream.getVideoTracks()[0];
+
+                // Send local audio.
+                micProducer = room.createProducer(audioTrack);
+                micProducer.send(sendTransport);
+
+                // Send local video.
+                camProducer = room.createProducer(videoTrack);
+                camProducer.send(sendTransport);
+            })
+            .catch(err => {
+                console.error('catch error ater room.join()', err);
+            });
+    }
+
+    function handlePeer(peer) {
+        // --- setup consumers ---
+        const consumers = peer.consumers;
+        consumers.forEach(consumer => handleConsumer(consumer));
+
+        peer.on('close', function () {
+            console.log('--- remote peer clolsed. name/id=' + peer.name);
+
+            // --- stop remote video ---
+            const id = peer.name;
+            removeRemoteVideo(id);
+        });
+
+        peer.on('newconsumer', function (consumer) {
+            console.log('--newconsumer');
+
+            // -- setup new consumser --
+            handleConsumer(consumer);
+        });
+    }
+
+    function handleConsumer(consumer) {
+        console.log('handleConsumer peer=' + consumer.peer.name);
+        if (recvTransport) {
+            consumer.receive(recvTransport)
+                .then((track) => {
+                    console.log('-- remoteStream track kind=' + track.kind);
+                    const id = consumer.peer.name;
+                    addRemoteTrack(id, track);
+                })
+                .catch((err) => {
+                    console.error(err);
+                });
+        }
+        else {
+            console.error('recvTransport NOT READY');
+        }
+
+        consumer.on('close', () => {
+            console.log('---- Consumer closed ----');
+        });
+    }
+
+    // =========== media handling ========== 
+    function stopLocalStream(stream) {
+        let tracks = stream.getTracks();
+        if (!tracks) {
+            console.warn('NO tracks');
+            return;
+        }
+
+        tracks.forEach(track => track.stop());
+    }
+
+    // return Promise
+    function playVideo(element, stream) {
+        if (element.srcObject) {
+            console.warn('element ALREADY playing, so ignore');
+            return;
+        }
+        element.srcObject = stream;
+        element.volume = 0;
+        return element.play();
+    }
+
+    function pauseVideo(element) {
+        element.pause();
+        element.srcObject = null;
+    }
+
+    function addRemoteTrack(id, track) {
+        let video = findRemoteVideo(id);
+        if (!video) {
+            video = addRemoteVideo(id);
+        }
+
+        if (video.srcObject) {
+            video.srcObject.addTrack(track);
+            return;
+        }
+
+        const newStream = new MediaStream();
+        newStream.addTrack(track);
+        playVideo(video, newStream).catch(err => { console.error('media ERROR:', err) });
+    }
+
+    function addRemoteVideo(id) {
+        let existElement = findRemoteVideo(id);
+        if (existElement) {
+            console.warn('remoteVideo element ALREADY exist for id=' + id);
+            return existElement;
+        }
+
+        let element = document.createElement('video');
+        remoteContainer.appendChild(element);
+        element.id = 'remote_' + id;
+        //element.width = 240;
+        //element.height = 180;
+        element.className = 'remote_video';
+        element.volume = 0;
+        //element.controls = true;
+
+        calcVideoHorzVertCount();
+        return element;
+    }
+
+    function findRemoteVideo(id) {
+        let element = document.getElementById('remote_' + id);
+        return element;
+    }
+
+    function removeRemoteVideo(id) {
+        console.log(' ---- removeRemoteVideo() id=' + id);
+        let element = document.getElementById('remote_' + id);
+        if (element) {
+            element.pause();
+            element.srcObject = null;
+            remoteContainer.removeChild(element);
+
+            calcVideoHorzVertCount();
+        }
+        else {
+            console.log('child element NOT FOUND');
+        }
+    }
+
+    function removeAllRemoteVideo() {
+        while (remoteContainer.firstChild) {
+            remoteContainer.firstChild.pause();
+            remoteContainer.firstChild.srcObject = null;
+            remoteContainer.removeChild(remoteContainer.firstChild);
+        }
+
+        calcVideoHorzVertCount();
+    }
+
+    // ============ UI button ==========
+
+    function startMedia() {
+        if (localStream) {
+            console.warn('WARN: local media ALREADY started');
+            return;
+        }
+
+        navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+            .then((stream) => {
+                localStream = stream;
+                playVideo(localVideo, localStream);
+                updateButtons();
+            })
+            .catch(err => {
+                console.error('media ERROR:', err);
+            });
+    }
+
+    function stopMedia() {
+        if (localStream) {
+            pauseVideo(localVideo);
+            stopLocalStream(localStream);
+            localStream = null;
+        }
+        updateButtons();
+    }
+
+    function connect() {
+        if (!localStream) {
+            console.warn('WARN: local media NOT READY');
+            return;
+        }
+
+        // --- prepare room ---
+        let roomName = getRoomName();
+        if ((roomName) && (roomName !== '')) {
+            console.log('prepareRoom roomName=' + roomName);
+            prepareRoom(roomName);
+        }
+
+        // --- join room ---
+        console.log('try join room as:' + clientId);
+        joinRoom(clientId, localStream);
+    }
+
+    function dissconnect() {
+        room.leave(clientId); // not promise
+        micProducer = null;
+        camProducer = null;
+        sendTransport = null;
+        recvTransport = null;
+        updateButtons();
+    }
+
+    function getRoomName() {
+        const name = roomName.value;
+        return name;
+    }
+
+    // ---- UI control ----
+    function updateButtons() {
+        if (room.joined) {
+            disableElement('start_video_button');
+            disableElement('stop_video_button');
+            disableElement('connect_button');
+            enabelElement('disconnect_button');
+            disableElement('room_name');
+        }
+        else {
+            disableElement('disconnect_button');
+            enabelElement('room_name');
+            if (localStream) {
+                disableElement('start_video_button');
+                enabelElement('stop_video_button');
+                enabelElement('connect_button');
+            }
+            else {
+                enabelElement('start_video_button');
+                disableElement('stop_video_button');
+                disableElement('connect_button');
+            }
+        }
+    }
+
+    function enabelElement(id) {
+        let element = document.getElementById(id);
+        if (element) {
+            element.removeAttribute('disabled');
+        }
+    }
+
+    function disableElement(id) {
+        let element = document.getElementById(id);
+        if (element) {
+            element.setAttribute('disabled', '1');
+        }
+    }
+
+    let videoHorzCount = 1;
+    let videoVertCount = 1;
+    function resizeVideo() {
+        // --- calc container size limit ---
+        const margin = 20;
+        const winWidth = window.innerWidth;
+        const winHeight = window.innerHeight;
+        //console.log('resizeVideo() count=%d winWidth=%d winHeight=%d', count, winWidth, winHeight);
+        const barHeight = parseInt(document.getElementById('button_bar').style.height, 10); //bottom;
+        const pannelWidth = parseInt(document.getElementById('local_pannel').style.width, 10); //right;
+        const containerWidth = winWidth - pannelWidth - margin;
+        const containerHeight = winHeight - barHeight - margin;
+        //console.log('resizeVideo() barH=%d pannelW=%d conW=%d conH=%d', barHeight, pannelWidth, containerWidth, containerHeight);
+        remoteContainer.style.width = containerWidth + 'px';
+        remoteContainer.style.height = containerHeight + 'px';
+    }
+
+    function calcVideoHorzVertCount() {
+        const count = remoteContainer.childElementCount;
+
+        if (count <= 1) {
+            videoHorzCount = 1;
+            videoVertCount = 1;
+        }
+        else if (count <= 2) {
+            videoHorzCount = 2;
+            videoVertCount = 1;
+        }
+        else if (count <= 4) {
+            videoHorzCount = 2;
+            videoVertCount = 2;
+        }
+        else if (count <= 6) {
+            videoHorzCount = 3;
+            videoVertCount = 2;
+        }
+        else if (count <= 9) {
+            videoHorzCount = 3;
+            videoVertCount = 3;
+        }
+        else if (count <= 12) {
+            videoHorzCount = 4;
+            videoVertCount = 3;
+        }
+        else if (count <= 16) {
+            videoHorzCount = 4;
+            videoVertCount = 4;
+        }
+        else if (count <= 20) {
+            videoHorzCount = 5;
+            videoVertCount = 4;
+        }
+        else if (count <= 25) {
+            videoHorzCount = 5;
+            videoVertCount = 5;
+        }
+        else {
+            console.warn('TOO MANY remote video elements');
+            videoHorzCount = 5;
+            videoVertCount = 5;
+        }
+
+        console.log('calcVideoHorzVertCount() count=%d, horz=%d, vert=%d', count, videoHorzCount, videoVertCount);
+        // grid-template-columns: repeat(2, 1fr);
+        // grid-template-rows: 100px 1fr;
+        remoteContainer.style.gridTemplateColumns = 'repeat(' + videoHorzCount + ', 1fr)';
+        //remoteContainer.style.gridTemplateRows = '' + videoHeight + 'px 1fr';
+        remoteContainer.style.gridTemplateRows = 'repeat(' + videoVertCount + ', 1fr)';
+    }
+
+    updateButtons();
+    console.log('=== ready ==='); 
+</script>
+
+</html>
