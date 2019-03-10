@@ -422,7 +422,6 @@
         }
         else {
             disableElement('disconnect_button');
-            enabelElement('room_name');
             if (localStream) {
                 disableElement('start_video_button');
                 enabelElement('stop_video_button');
@@ -432,6 +431,12 @@
                 enabelElement('start_video_button');
                 disableElement('stop_video_button');
                 disableElement('connect_button');
+            }
+            if (isRoomSpecifiedByUrl()) {
+                disableElement('room_name');
+            }
+            else {
+                enabelElement('room_name');
             }
         }
     }
@@ -449,6 +454,35 @@
             element.setAttribute('disabled', '1');
         }
     }
+
+    function getRoomFromUrl() {
+        const search = window.location.search;
+        const re = new RegExp('room=([^&=]+)');
+        const results = re.exec(search);
+        let room = '';
+        if (results) {
+            room = results[1];
+        }
+        return room;
+    }
+
+    function isRoomSpecifiedByUrl() {
+        let room = getRoomFromUrl();
+        if ((room) && (room !== '')) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    function setupRoomFromUrl() {
+        let room = getRoomFromUrl();
+        if ((room) && (room !== '')) {
+            roomName.value = room;
+        }
+    }
+
 
     let videoHorzCount = 1;
     let videoVertCount = 1;
@@ -521,6 +555,7 @@
     }
 
     updateButtons();
+    setupRoomFromUrl();
     console.log('=== ready ==='); 
 </script>
 
