@@ -1,10 +1,11 @@
 <!doctype html>
 <html>
+
 <head>
- <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
- <meta charset="charset=UTF-8" />
- <title>mediasoup v2 multi-room 1way watch</title>
- <!--
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="charset=UTF-8" />
+  <title>mediasoup v2 multi-room 1way watch</title>
+  <!--
    // mediasoup_sample_v2
    //   https://github.com/mganeko/mediasoup_sample_v2
    //   mediasoup_sample is provided under MIT license
@@ -12,9 +13,14 @@
    //   This sample is using https://github.com/versatica/mediasoup
    //   This sample is based on https://github.com/footniko/mediasoup-sample
  -->
- <script src="js/mediasoup-client.min.js"></script>
- <script src="socket.io/socket.io.js"></script>
+  <script>
+  //window.localStorage.setItem('debug', 'mediasoup-client:WARN* mediasoup-client:ERROR*');
+  </script>
+  <script src="js/mediasoup-client.min.js"></script>
+  <script src="js/room_options.js"></script>
+  <script src="socket.io/socket.io.js"></script>
 </head>
+
 <body>
   mediasoup v2 multi-room sample, 1 way watch side<br />
   <!---
@@ -22,9 +28,9 @@
   <button id="stop_video_button" onclick="stopMedia();">Stop Media</button>
   -->
   &nbsp;
-  <input type="text" id="room_name" placeholder="room name"/>
-  <button id="connect_button"  onclick="connect();">Connect</button>
-  <button id="disconnect_button"  onclick="dissconnect();">Disconnect</button> 
+  <input type="text" id="room_name" placeholder="room name" />
+  <button id="connect_button" onclick="connect();">Connect</button>
+  <button id="disconnect_button" onclick="dissconnect();">Disconnect</button>
   <div>
     NO local video<br />
     <!--
@@ -47,37 +53,62 @@
   //let roomId = 'anther_room';
 
   // =========== socket.io ========== 
-  const socket = io.connect('/');
-  socket.on('connect', function(evt) {
-    //console.log('socket.io connected. enter room=' + room );
-    //socket.emit('enter', room);
-    console.log('socket.io connected()');
-  });
-  socket.on('error', function(err) {
-    console.error('socket.io ERROR:', err);
-  });
-  socket.on('disconnect', function(evt) {
-    console.log('socket.io disconnect:', evt);
-  });
-  socket.on('message', function(message) {
-    console.log('socket.io message:', message);
-    if (message.type === 'welcome') {
-      if (socket.id !== message.id) {
-        console.warn('WARN: something wrong with clientID', socket.io, message.id);
-      }
+  let socket = null;
 
-      clientId = message.id;
-      console.log('connected to server. clientId=' + clientId);
+  // return Promise
+  function connectSocket() {
+    if (socket) {
+      socket.close();
+      socket = null;
+      clientId = null;
     }
-    else if (message.type === 'server_notify') {
-      const notification = message.notification;
-      console.debug('New notification came from server:', notification);
-      room.receiveNotification(notification);
+
+    return new Promise((resolve, reject) => {
+      socket = io.connect('/');
+      socket.on('connect', function (evt) {
+        //console.log('socket.io connected. enter room=' + room );
+        //socket.emit('enter', room);
+        console.log('socket.io connected()');
+        //resolve();
+      });
+      socket.on('error', function (err) {
+        console.error('socket.io ERROR:', err);
+        reject(err);
+      });
+      socket.on('disconnect', function (evt) {
+        console.log('socket.io disconnect:', evt);
+      });
+      socket.on('message', function (message) {
+        console.log('socket.io message:', message);
+        if (message.type === 'welcome') {
+          if (socket.id !== message.id) {
+            console.warn('WARN: something wrong with clientID', socket.io, message.id);
+          }
+
+          clientId = message.id;
+          console.log('connected to server. clientId=' + clientId);
+          resolve();
+        }
+        else if (message.type === 'server_notify') {
+          const notification = message.notification;
+          console.debug('New notification came from server:', notification);
+          room.receiveNotification(notification);
+        }
+        else {
+          console.error('UNKNOWN message from server:', message);
+        }
+      });
+    });
+  }
+
+  function disconnectSocket() {
+    if (socket) {
+      socket.close();
+      socket = null;
+      clientId = null;
+      console.log('socket.io closed..');
     }
-    else {
-      console.error('UNKNOWN message from server:', message);
-    }
-  });
+  }
 
   function sendRequest(request, callback, errback) {
     socket.emit('client_request', request, (err, response) => {
@@ -100,24 +131,23 @@
 
   // =========== mediasoup ========== 
   console.log('=== Mediasoup Device support:', mediasoupClient.isDeviceSupported());
-
-  const room = new mediasoupClient.Room();
+  const room = new mediasoupClient.Room(roomOptions);
   //let micProducer = null;
   //let camProducer = null;
   //let sendTransport = null;
   let recvTransport = null;
 
-  room.on('request', function(request, callback, errback) {
+  room.on('request', function (request, callback, errback) {
     console.log('--- on request, method=' + request.method);
     console.log(request);
     sendRequest(request, callback, errback);
   });
-  room.on('notify', function(notification) {
+  room.on('notify', function (notification) {
     console.log('--- notify from local room:', notification);
     sendNotify(notification);
 
   });
-  room.on('newpeer', function(peer) {
+  room.on('newpeer', function (peer) {
     console.log('=== newpeer ====');
     handlePeer(peer);
   });
@@ -130,22 +160,22 @@
     }
 
     room.join(peername)
-    .then((peers) => {
-      console.info("room joined:", peers);
-      updateButtons();
+      .then((peers) => {
+        console.info("room joined:", peers);
+        updateButtons();
 
-      // ---- recvonly ---
-      // Create a Transport for receiving media from remote Peers.
-      recvTransport = room.createTransport('recv');
+        // ---- recvonly ---
+        // Create a Transport for receiving media from remote Peers.
+        recvTransport = room.createTransport('recv');
 
-      // --- setup peers ---
-      peers.forEach(peer => handlePeer(peer));
+        // --- setup peers ---
+        peers.forEach(peer => handlePeer(peer));
 
-      console.log('--peers setup end --');
-    })
-    .catch(err  => {
-      console.error('catch error ater room.join()', err);
-    });
+        console.log('--peers setup end --');
+      })
+      .catch(err => {
+        console.error('catch error ater room.join()', err);
+      });
   }
 
   function handlePeer(peer) {
@@ -153,15 +183,15 @@
     const consumers = peer.consumers;
     consumers.forEach(consumer => handleConsumer(consumer));
 
-    peer.on('close', function() {
+    peer.on('close', function () {
       console.log('--- remote peer clolsed. name/id=' + peer.name);
 
       // --- stop remote video ---
       const id = peer.name;
       removeRemoteVideo(id);
     });
-    
-    peer.on('newconsumer', function(consumer) {
+
+    peer.on('newconsumer', function (consumer) {
       console.log('--newconsumer');
 
       // -- setup new consumser --
@@ -173,14 +203,14 @@
     console.log('handleConsumer peer=' + consumer.peer.name);
     if (recvTransport) {
       consumer.receive(recvTransport)
-      .then((track) => {
-        console.log('-- remoteStream track kind=' + track.kind);
-        const id = consumer.peer.name;
-        addRemoteTrack(id, track);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
+        .then((track) => {
+          console.log('-- remoteStream track kind=' + track.kind);
+          const id = consumer.peer.name;
+          addRemoteTrack(id, track);
+        })
+        .catch((err) => {
+          console.error(err);
+        });
     }
     else {
       console.error('recvTransport NOT READY');
@@ -194,11 +224,11 @@
   // =========== media handling ========== 
   function stopLocalStream(stream) {
     let tracks = stream.getTracks();
-    if (! tracks) {
+    if (!tracks) {
       console.warn('NO tracks');
       return;
     }
-    
+
     tracks.forEach(track => track.stop());
   }
 
@@ -220,7 +250,7 @@
 
   function addRemoteTrack(id, track) {
     let video = findRemoteVideo(id);
-    if (! video) {
+    if (!video) {
       video = addRemoteVideo(id);
     }
 
@@ -231,7 +261,7 @@
 
     const newStream = new MediaStream();
     newStream.addTrack(track);
-    playVideo(video, newStream).catch(err => { console.error('media ERROR:', err)});
+    playVideo(video, newStream).catch(err => { console.error('media ERROR:', err) });
   }
 
   function addRemoteVideo(id) {
@@ -240,7 +270,7 @@
       console.warn('remoteVideo element ALREADY exist for id=' + id);
       return existElement;
     }
-    
+
     let element = document.createElement('video');
     remoteContainer.appendChild(element);
     element.id = 'remote_' + id;
@@ -250,7 +280,7 @@
     //element.controls = true;
     return element;
   }
-  
+
   function findRemoteVideo(id) {
     let element = document.getElementById('remote_' + id);
     return element;
@@ -279,10 +309,16 @@
 
   // ============ UI button ==========
 
-  function connect() {
+  async function connect() {
+    // --- connect socket.io ---
+    await connectSocket().catch(err => {
+      console.error(err);
+      return;
+    });
+
     // --- prepare room ---
-    let roomName =  getRoomName();
-    if ( (roomName) && (roomName !== '') ) {
+    let roomName = getRoomName();
+    if ((roomName) && (roomName !== '')) {
       console.log('prepareRoom roomName=' + roomName);
       prepareRoom(roomName);
     }
@@ -298,6 +334,8 @@
     camProducer = null;
     sendTransport = null;
     recvTransport = null;
+
+    disconnectSocket();
     updateButtons();
   }
 
@@ -315,8 +353,13 @@
     }
     else {
       disableElement('disconnect_button');
-      enabelElement('room_name');
       enabelElement('connect_button');
+      if (isRoomSpecifiedByUrl()) {
+        disableElement('room_name');
+      }
+      else {
+        enabelElement('room_name');
+      }
     }
   }
 
@@ -331,10 +374,41 @@
     let element = document.getElementById(id);
     if (element) {
       element.setAttribute('disabled', '1');
-    }    
+    }
+  }
+
+
+  function getRoomFromUrl() {
+    const search = window.location.search;
+    const re = new RegExp('room=([^&=]+)');
+    const results = re.exec(search);
+    let room = '';
+    if (results) {
+      room = results[1];
+    }
+    return room;
+  }
+
+  function isRoomSpecifiedByUrl() {
+    let room = getRoomFromUrl();
+    if ((room) && (room !== '')) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  function setupRoomFromUrl() {
+    let room = getRoomFromUrl();
+    if ((room) && (room !== '')) {
+      roomName.value = room;
+    }
   }
 
   updateButtons();
+  setupRoomFromUrl();
   console.log('=== ready ==='); 
 </script>
+
 </html>
