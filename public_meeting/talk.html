@@ -19,23 +19,71 @@
   <script src="js/mediasoup-client.min.js"></script>
   <script src="js/room_options.js"></script>
   <script src="socket.io/socket.io.js"></script>
+  <style>
+    .bar {
+      border: rgb(223, 223, 223) solid 1px;
+      height: 50px;
+      background-color: rgb(230, 230, 230);
+    }
+
+    .outer_h {
+      display: grid;
+      grid-template-columns: 124px 1fr;
+      grid-template-rows: 1fr;
+    }
+
+    .pannel_h {
+      height: 100%;
+      width: 122px;
+    }
+
+    .outer_v {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: 100px 1fr;
+    }
+
+    .pannel_v {
+      border: red solid 1px;
+      width: 100%;
+    }
+
+    .wrapper {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: 100px 1fr;
+      column-gap: 4px;
+      row-gap: 4px;
+    }
+
+    .remote_video {
+      border: rgb(192, 192, 192) solid 1px;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
 </head>
 
-<body>
-  mediasoup v2 multi-room sample, 1 way talk side <br />
-  <button id="start_video_button" onclick="startMedia();">Start Media</button>
-  <button id="stop_video_button" onclick="stopMedia();">Stop Media</button>
-  &nbsp;
-  <input type="text" id="room_name" placeholder="room name" />
-  <button id="connect_button" onclick="connect();">Connect</button>
-  <button id="disconnect_button" onclick="dissconnect();">Disconnect</button>
-  <div>
-    local video<br />
-    <video id="local_video" autoplay style="width: 120px; height: 90px; border: 1px solid black;"></video>
-    <span id="state_span"></span>
+<body onload="calcVideoHorzVertCount(); resizeVideo()" onresize="resizeVideo()">
+  <div id="button_bar" class="bar" style="height:50px;">
+    mediasoup v2 multi-room sample, 1 way talk side
+    <br />
+    <button id="start_video_button" onclick="startMedia();">Start Media</button>
+    <button id="stop_video_button" onclick="stopMedia();">Stop Media</button>
+    &nbsp;
+    <input type="text" id="room_name" placeholder="room name" />
+    <button id="connect_button" onclick="connect();">Connect</button>
+    <button id="disconnect_button" onclick="dissconnect();">Disconnect</button>
   </div>
-  NO remote video<br />
-  <div id="remote_container">
+  <div class="outer_h">
+    <div id="local_pannel" class="pannel_h" style="width: 122px;">
+      local video<br />
+      <video id="local_video" autoplay style="width: 120px; height: 90px; border: 1px solid black;"></video>
+      <span id="state_span"></span>
+    </div>
+    <!-- NO remote video<br /> -->
+    <div id="remote_container" class="wrapper" style="display:none; width: 122px;">
+    </div>
   </div>
 </body>
 <script>
@@ -378,6 +426,84 @@
     }
   }
 
+  // ---- resize remote video -------
+  let videoHorzCount = 1;
+  let videoVertCount = 1;
+  function resizeVideo() {
+    return;
+
+    /*-- DO nothing --
+    // --- calc container size limit ---
+    const margin = 20;
+    const winWidth = window.innerWidth;
+    const winHeight = window.innerHeight;
+    //console.log('resizeVideo() count=%d winWidth=%d winHeight=%d', count, winWidth, winHeight);
+    const barHeight = parseInt(document.getElementById('button_bar').style.height, 10); //bottom;
+    const pannelWidth = parseInt(document.getElementById('local_pannel').style.width, 10); //right;
+    const containerWidth = winWidth - pannelWidth - margin;
+    const containerHeight = winHeight - barHeight - margin;
+    //console.log('resizeVideo() barH=%d pannelW=%d conW=%d conH=%d', barHeight, pannelWidth, containerWidth, containerHeight);
+    remoteContainer.style.width = containerWidth + 'px';
+    remoteContainer.style.height = containerHeight + 'px';
+    --*/
+  }
+
+  function calcVideoHorzVertCount() {
+    return;
+
+    /*-- DO nothing --
+    const count = remoteContainer.childElementCount;
+
+    if (count <= 1) {
+      videoHorzCount = 1;
+      videoVertCount = 1;
+    }
+    else if (count <= 2) {
+      videoHorzCount = 2;
+      videoVertCount = 1;
+    }
+    else if (count <= 4) {
+      videoHorzCount = 2;
+      videoVertCount = 2;
+    }
+    else if (count <= 6) {
+      videoHorzCount = 3;
+      videoVertCount = 2;
+    }
+    else if (count <= 9) {
+      videoHorzCount = 3;
+      videoVertCount = 3;
+    }
+    else if (count <= 12) {
+      videoHorzCount = 4;
+      videoVertCount = 3;
+    }
+    else if (count <= 16) {
+      videoHorzCount = 4;
+      videoVertCount = 4;
+    }
+    else if (count <= 20) {
+      videoHorzCount = 5;
+      videoVertCount = 4;
+    }
+    else if (count <= 25) {
+      videoHorzCount = 5;
+      videoVertCount = 5;
+    }
+    else {
+      console.warn('TOO MANY remote video elements');
+      videoHorzCount = 5;
+      videoVertCount = 5;
+    }
+
+    console.log('calcVideoHorzVertCount() count=%d, horz=%d, vert=%d', count, videoHorzCount, videoVertCount);
+    // grid-template-columns: repeat(2, 1fr);
+    // grid-template-rows: 100px 1fr;
+    remoteContainer.style.gridTemplateColumns = 'repeat(' + videoHorzCount + ', 1fr)';
+    //remoteContainer.style.gridTemplateRows = '' + videoHeight + 'px 1fr';
+    remoteContainer.style.gridTemplateRows = 'repeat(' + videoVertCount + ', 1fr)';
+    ---*/
+  }
 
   updateButtons();
   setupRoomFromUrl();
