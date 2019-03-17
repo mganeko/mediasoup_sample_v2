@@ -66,16 +66,16 @@
 
 <body onload="calcVideoHorzVertCount(); resizeVideo()" onresize="resizeVideo()">
   <div id="button_bar" class="bar" style="height:50px;">
-  mediasoup v2 multi-room sample, 1 way watch side
-  <br />
-  <!---
+    mediasoup v2 multi-room sample, 1 way watch side
+    <br />
+    <!---
   <button id="start_video_button" onclick="startMedia();">Start Media</button>
   <button id="stop_video_button" onclick="stopMedia();">Stop Media</button>
   -->
-  &nbsp;
-  <input type="text" id="room_name" placeholder="room name" />
-  <button id="connect_button" onclick="connect();">Connect</button>
-  <button id="disconnect_button" onclick="dissconnect();">Disconnect</button>
+    &nbsp;
+    <input type="text" id="room_name" placeholder="room name" />
+    <button id="connect_button" onclick="connect();">Connect</button>
+    <button id="disconnect_button" onclick="dissconnect();">Disconnect</button>
   </div>
   <div class="outer_h">
     <div id="local_pannel" class="pannel_h" style="display: none; width: 0px;">
@@ -237,6 +237,7 @@
       // --- stop remote video ---
       const id = peer.name;
       removeRemoteVideo(id);
+      removeRemoteScreenVideo(id);
     });
 
     peer.on('newconsumer', function (consumer) {
@@ -252,9 +253,12 @@
     if (recvTransport) {
       consumer.receive(recvTransport)
         .then((track) => {
-          console.log('-- remoteStream track kind=' + track.kind);
+          console.log('-- remoteStream track kind=%s, consumer(id=%d, appData=%s, peer.name=%s)', track.kind, consumer.id, consumer.appData, consumer.peer.name);
           const id = consumer.peer.name;
-          addRemoteTrack(id, track);
+          const trackKind = addRemoteTrack(id, track);
+          //consumer.appData = { kind: trackKind };
+          consumer.customTrackKind = trackKind
+          console.log('--consumer customTrackKind=', consumer.customTrackKind);
         })
         .catch((err) => {
           console.error(err);
@@ -264,8 +268,12 @@
       console.error('recvTransport NOT READY');
     }
 
-    consumer.on('close', () => {
-      console.log('---- Consumer closed ----');
+    consumer.on('close', (originator) => {
+      console.log('---- Consumer closed ----', originator, consumer.customTrackKind);
+      if (consumer.customTrackKind === 'screen') {
+        const id = consumer.peer.name;
+        removeRemoteScreenVideo(id);
+      }
     });
   }
 
@@ -296,20 +304,79 @@
     element.srcObject = null;
   }
 
+
+  /*---
+
+  socket==peer
+    - consumer.id, video(cam)  videoElement.id= 'remote_' + peer.name
+    - consumer.id, audio(mic)     same us video(cam)
+    - consumer.id, video(screen) videoElement.id= 'screen_' + peer.name
+
+  ---*/
+
+
   function addRemoteTrack(id, track) {
+    let trackKind = '';
     let video = findRemoteVideo(id);
-    if (!video) {
+    if (video) {
+      if (video.srcObject) {
+        if (track.kind === 'video') {
+          // --- if no video track, then use the videoElement --
+          if (!hasVideoTrack(video.srcObject)) {
+            console.log('use existing videoElement for videoTrack');
+            video.srcObject.addTrack(track);
+            trackKind = 'video';
+            return trackKind;
+          }
+          else {
+            // --- need new video element (for screen)----
+            console.warn('--- prepare new videoElement for screen ----');
+            video = addRemoteScreenVideo(id);
+            trackKind = 'screen';
+          }
+        }
+        else {
+          // --- audio --- (assume no 2nd audo track)
+          console.log('use existing videoElement for audioTrack');
+          video.srcObject.addTrack(track);
+          trackKind = 'audio';
+          return trackKind;
+        }
+      }
+      else {
+        // -- found videoElement, but no stream --
+        // use videoElement
+        console.log('use existing videoElement, no stream yet');
+      }
+    }
+    else {
       video = addRemoteVideo(id);
+      trackKind = track.kind;
     }
 
-    if (video.srcObject) {
-      video.srcObject.addTrack(track);
-      return;
-    }
+    //if (video.srcObject) {
+    //  video.srcObject.addTrack(track);
+    //  return;
+    //}
 
     const newStream = new MediaStream();
     newStream.addTrack(track);
     playVideo(video, newStream).catch(err => { console.error('media ERROR:', err) });
+
+    return trackKind;
+  }
+
+  function hasVideoTrack(stream) {
+    if (!stream) {
+      return false;
+    }
+
+    const tracks = stream.getVideoTracks();
+    if (tracks.length > 0) {
+      return true;
+    }
+
+    return false;
   }
 
   function addRemoteVideo(id) {
@@ -358,6 +425,16 @@
       remoteContainer.removeChild(remoteContainer.firstChild);
     }
     calcVideoHorzVertCount();
+  }
+
+  function addRemoteScreenVideo(id) {
+    const screenId = 'screen_' + id;
+    return addRemoteVideo(screenId);
+  }
+
+  function removeRemoteScreenVideo(id) {
+    const screenId = 'screen_' + id;
+    removeRemoteVideo(screenId);
   }
 
   // ============ UI button ==========

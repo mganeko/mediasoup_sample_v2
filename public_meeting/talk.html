@@ -80,6 +80,11 @@
       local video<br />
       <video id="local_video" autoplay style="width: 120px; height: 90px; border: 1px solid black;"></video>
       <span id="state_span"></span>
+      <br />
+      <button id="start_screen_button" onclick="startScreenShare();">Add Screen</button>
+      <button id="stop_screen_button" onclick="stopScreenShare();">Remove Screen</button>
+      <video id="screen_video" autoplay style="width: 120px; height: 90px; border: 1px solid black;"></video>
+
     </div>
     <!-- NO remote video<br /> -->
     <div id="remote_container" class="wrapper" style="display:none; width: 122px;">
@@ -88,11 +93,13 @@
 </body>
 <script>
   const localVideo = document.getElementById('local_video');
+  const screenVideo = document.getElementById('screen_video');
   const remoteContainer = document.getElementById('remote_container');
   //const remoteVideo = document.getElementById('remote_video');
   const stateSpan = document.getElementById('state_span');
   const roomName = document.getElementById('room_name');
   let localStream = null;
+  let screenStream = null;
   let clientId = null;
   //let roomId = 'anther_room';
 
@@ -178,6 +185,7 @@
   const room = new mediasoupClient.Room(roomOptions);
   let micProducer = null;
   let camProducer = null;
+  let screenProducer = null;
   let sendTransport = null;
   let recvTransport = null;
 
@@ -197,7 +205,7 @@
   });
 
 
-  function joinRoom(peername, stream) {
+  function joinRoom(peername, stream, anotherStream) {
     if (room.joined) {
       console.warn('ALREADY joining room');
       return;
@@ -230,6 +238,11 @@
         // Send local video.
         camProducer = room.createProducer(videoTrack);
         camProducer.send(sendTransport);
+
+        // send another video stream
+        if (anotherStream) {
+          sendScreenStream(anotherStream);
+        }
       })
       .catch(err => {
         console.error('catch error ater room.join()', err);
@@ -310,6 +323,13 @@
       stopLocalStream(localStream);
       localStream = null;
     }
+
+    if (screenStream) {
+      pauseVideo(screenVideo);
+      stopLocalStream(screenStream);
+      screenStream = null;
+    }
+
     updateButtons();
   }
 
@@ -334,13 +354,14 @@
 
     // --- join room ---
     console.log('try join room as:' + clientId);
-    joinRoom(clientId, localStream);
+    joinRoom(clientId, localStream, screenStream);
   }
 
   function dissconnect() {
     room.leave(clientId); // not promise
     micProducer = null;
     camProducer = null;
+    screenProducer = null;
     sendTransport = null;
     recvTransport = null;
 
@@ -351,6 +372,63 @@
   function getRoomName() {
     const name = roomName.value;
     return name;
+  }
+
+  function startScreenShare() {
+    if (screenStream) {
+      console.warn('Screen ALREADY captured');
+      return;
+    }
+
+    navigator.mediaDevices.getDisplayMedia({ video: true })
+      .then(stream => {
+        screenStream = stream;
+        playVideo(screenVideo, screenStream);
+
+        /*
+        if (room.joined) {
+          // ---- send screen stream ---
+          const videoTrack = stream.getVideoTracks()[0];
+          screenProducer = room.createProducer(videoTrack);
+          screenProducer.appData = 'screen';
+          screenProducer.send(sendTransport)
+            .then(evt => console.log('start send:', evt))
+            .catch(err => console.error('send ERROR:', err));
+        }
+        */
+        sendScreenStream(stream);
+
+        updateButtons();
+      })
+      .catch(err => {
+        console.error('media ERROR:', err);
+      })
+  }
+
+  function sendScreenStream(stream) {
+    if (room.joined) {
+      // ---- send screen stream ---
+      const videoTrack = stream.getVideoTracks()[0];
+      screenProducer = room.createProducer(videoTrack);
+      screenProducer.appData = 'screen';
+      screenProducer.send(sendTransport)
+        .then(evt => console.log('start screen send:', evt))
+        .catch(err => console.error('screen send ERROR:', err));
+    }
+  }
+
+  function stopScreenShare() {
+    if (screenProducer) {
+      screenProducer.close('close_screen');
+      screenProducer = null;
+    }
+
+    if (screenStream) {
+      pauseVideo(screenVideo);
+      stopLocalStream(screenStream);
+      screenStream = null;
+    }
+    updateButtons();
   }
 
   // ---- UI control ----
@@ -380,6 +458,15 @@
       else {
         enabelElement('room_name');
       }
+    }
+
+    if (screenStream) {
+      disableElement('start_screen_button');
+      enabelElement('stop_screen_button');
+    }
+    else {
+      enabelElement('start_screen_button');
+      disableElement('stop_screen_button');
     }
   }
 
