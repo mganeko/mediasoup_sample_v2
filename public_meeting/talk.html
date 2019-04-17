@@ -34,7 +34,7 @@
 
     .pannel_h {
       height: 100%;
-      width: 122px;
+      width: 242px;
     }
 
     .outer_v {
@@ -76,14 +76,14 @@
     <button id="disconnect_button" onclick="dissconnect();">Disconnect</button>
   </div>
   <div class="outer_h">
-    <div id="local_pannel" class="pannel_h" style="width: 122px;">
+    <div id="local_pannel" class="pannel_h" style="width: 242px;">
       local video<br />
-      <video id="local_video" autoplay style="width: 120px; height: 90px; border: 1px solid black;"></video>
+      <video id="local_video" autoplay style="width: 240px; height: 180px; border: 1px solid black;"></video>
       <span id="state_span"></span>
       <br />
       <button id="start_screen_button" onclick="startScreenShare();">Add Screen</button>
       <button id="stop_screen_button" onclick="stopScreenShare();">Remove Screen</button>
-      <video id="screen_video" autoplay style="width: 120px; height: 90px; border: 1px solid black;"></video>
+      <video id="screen_video" autoplay style="width: 240px; height: 180px; border: 1px solid black;"></video>
 
     </div>
     <!-- NO remote video<br /> -->
@@ -460,12 +460,18 @@
       }
     }
 
-    if (screenStream) {
-      disableElement('start_screen_button');
-      enabelElement('stop_screen_button');
+    if (room.joined) {
+      if (screenStream) {
+        disableElement('start_screen_button');
+        enabelElement('stop_screen_button');
+      }
+      else {
+        enabelElement('start_screen_button');
+        disableElement('stop_screen_button');
+      }
     }
     else {
-      enabelElement('start_screen_button');
+      disableElement('start_screen_button');
       disableElement('stop_screen_button');
     }
   }

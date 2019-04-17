@@ -15,6 +15,7 @@
     "start": "node mediasoup_sample_v2.js",
     "socketio": "node mediasoup_sample_v2_socketio.js",
     "room": "node mediasoup_sample_v2_socketio_room.js",
+    "meeting": "node mediasoup_v2_meeting.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
