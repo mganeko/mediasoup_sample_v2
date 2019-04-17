@@ -22,7 +22,7 @@
   <style>
     .bar {
       border: rgb(223, 223, 223) solid 1px;
-      height: 50px;
+      height: 80px;
       background-color: rgb(230, 230, 230);
     }
 
@@ -65,8 +65,16 @@
 </head>
 
 <body onload="calcVideoHorzVertCount(); resizeVideo()" onresize="resizeVideo()">
-  <div id="button_bar" class="bar" style="height:50px;">
+  <div id="button_bar" class="bar">
     mediasoup v2 multi-room sample, 1 way talk side
+    <br />
+    <button id="devices_button" onclick="getDeviceList()">get Device List</button>
+    <select id="camera_list" size="1" style="width:160pt;">
+      <option>(video)</option>
+    </select>
+    <select id="mic_list" size="1" style="width:160pt;">
+      <option>(audio)</option>
+    </select>
     <br />
     <button id="start_video_button" onclick="startMedia();">Start Media</button>
     <button id="stop_video_button" onclick="stopMedia();">Stop Media</button>
@@ -98,6 +106,9 @@
   //const remoteVideo = document.getElementById('remote_video');
   const stateSpan = document.getElementById('state_span');
   const roomName = document.getElementById('room_name');
+  const micList = document.getElementById("mic_list");
+  const cameraList = document.getElementById("camera_list");
+
   let localStream = null;
   let screenStream = null;
   let clientId = null;
@@ -306,7 +317,9 @@
       return;
     }
 
-    navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+    //const constraints = { audio: true, video: true };
+    const constraints = getSelectedMediaConstraints();
+    navigator.mediaDevices.getUserMedia(constraints)
       .then((stream) => {
         localStream = stream;
         playVideo(localVideo, localStream);
@@ -517,6 +530,84 @@
     if ((room) && (room !== '')) {
       roomName.value = room;
     }
+  }
+
+  // ---- device list ----
+  function clearDeviceList() {
+    while (micList.lastChild) {
+      micList.removeChild(micList.lastChild);
+    }
+    while (cameraList.lastChild) {
+      cameraList.removeChild(cameraList.lastChild);
+    }
+  }
+
+  function addDevice(device) {
+    if (device.kind === 'audioinput') {
+      const id = device.deviceId;
+      const label = device.label || 'microphone'; // label is available for https 
+      const option = document.createElement('option');
+      option.setAttribute('value', id);
+      option.innerHTML = label + '(' + id + ')';;
+      micList.appendChild(option);
+    }
+    else if (device.kind === 'videoinput') {
+      const id = device.deviceId;
+      const label = device.label || 'camera'; // label is available for https 
+      const option = document.createElement('option');
+      option.setAttribute('value', id);
+      option.innerHTML = label + '(' + id + ')';
+      cameraList.appendChild(option);
+    }
+    else if (device.kind === 'audiooutput') {
+      const id = device.deviceId;
+      const label = device.label || 'speaker'; // label is available for https 
+      console.log('SKIP audiooutput:' + label + '(' + id + ')');
+    }
+    else {
+      console.error('UNKNOWN Device kind:' + device.kind);
+    }
+  }
+
+  function getDeviceList() {
+    clearDeviceList();
+    navigator.mediaDevices.enumerateDevices()
+      .then(function (devices) {
+        devices.forEach(function (device) {
+          console.log(device.kind + ": " + device.label +
+            " id = " + device.deviceId);
+          addDevice(device);
+        });
+      })
+      .catch(function (err) {
+        console.error('enumerateDevide ERROR:', err);
+      });
+  }
+
+  function getSelectedVideo() {
+    const id = cameraList.options[cameraList.selectedIndex].value;
+    return id;
+  }
+
+  function getSelectedAudio() {
+    const id = micList.options[micList.selectedIndex].value;
+    return id;
+  }
+
+  function getSelectedMediaConstraints() {
+    const audioId = getSelectedAudio();
+    const deviceId = getSelectedVideo();
+    console.log('selected video device id=' + deviceId + ' ,  audio=' + audioId);
+    const constraints = {
+      audio: {
+        deviceId: audioId
+      },
+      video: {
+        deviceId: deviceId
+      }
+    };
+
+    return constraints;
   }
 
   // ---- resize remote video -------
