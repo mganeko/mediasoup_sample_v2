@@ -76,6 +76,11 @@
       <option>(audio)</option>
     </select>
     <br />
+    <select id="video_size_list" size="1">
+      <option value="VGA">VGA-640</option>
+      <option value="HD" selected="1">HD-1280</option>
+      <option value="FHD">FullHD-1920</option>
+    </select>
     <button id="start_video_button" onclick="startMedia();">Start Media</button>
     <button id="stop_video_button" onclick="stopMedia();">Stop Media</button>
     &nbsp;
@@ -108,6 +113,7 @@
   const roomName = document.getElementById('room_name');
   const micList = document.getElementById("mic_list");
   const cameraList = document.getElementById("camera_list");
+  const videoSizeList = document.getElementById("video_size_list");
 
   let localStream = null;
   let screenStream = null;
@@ -594,16 +600,36 @@
     return id;
   }
 
+  function getSelectedVideoSizeConstraints() {
+    const size = videoSizeList.options[videoSizeList.selectedIndex].value;
+    let sizeConstraints = {};
+    if (size === 'HD') {
+      sizeConstraints = { width: 1280, height: 720 };
+    }
+    else if (size === 'FHD') {
+      sizeConstraints = { width: 1920, height: 1080 };
+    }
+    else {
+      // VGA
+      sizeConstraints = { width: 640, height: 480 };
+    }
+
+    return sizeConstraints;
+  }
+
   function getSelectedMediaConstraints() {
     const audioId = getSelectedAudio();
     const deviceId = getSelectedVideo();
-    console.log('selected video device id=' + deviceId + ' ,  audio=' + audioId);
+    const videoSize = getSelectedVideoSizeConstraints();
+    console.log('selected video device id=' + deviceId + ' ,  audio=' + audioId + ', size=' + videoSize.width + ',' + videoSize.height);
     const constraints = {
       audio: {
         deviceId: audioId
       },
       video: {
-        deviceId: deviceId
+        deviceId: deviceId,
+        width: videoSize.width,
+        height: videoSize.height
       }
     };
 
