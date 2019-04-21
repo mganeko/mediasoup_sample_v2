@@ -54,12 +54,24 @@
       grid-template-rows: 100px 1fr;
       column-gap: 4px;
       row-gap: 4px;
+      transition: 1s;
+      transition: 1s;
+
     }
 
     .remote_video {
       border: rgb(192, 192, 192) solid 1px;
       width: 100%;
       height: 100%;
+      transition: 1s;
+      transition-duration: 1s;
+    }
+
+    .slowly {
+      transition-property: left, top, width, height;
+      transition-duration: 1s;
+      transition-timing-function: default;
+      transition-delay: 0s;
     }
   </style>
 </head>
@@ -93,7 +105,7 @@
 <script>
   //const localVideo = document.getElementById('local_video');
   const remoteContainer = document.getElementById('remote_container');
-  const remoteVideo = document.getElementById('remote_video');
+  //const remoteVideo = document.getElementById('remote_video');
   const stateSpan = document.getElementById('state_span');
   const roomName = document.getElementById('room_name');
   //let localStream = null;
@@ -391,13 +403,13 @@
     element.id = 'remote_' + id;
     //element.width = 240;
     //element.height = 180;
-    element.className = 'remote_video';
+    element.className = 'remote_video slowly';
     element.volume = 1.0; // 0;
     //element.controls = true;
 
-    // --- double click ---
-    element.ondblclick = function () {
-      console.log('remoteVideo double click. id=' + id);
+    // --- click ---
+    element.onclick = function () {
+      console.log('remoteVideo click. id=' + id);
       toggleZoom(element);
     }
 
