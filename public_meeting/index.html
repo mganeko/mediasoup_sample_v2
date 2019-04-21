@@ -353,17 +353,21 @@
   }
 
   function findRemoteVideo(id) {
-    let element = document.getElementById('remote_' + id);
+    const element = document.getElementById('remote_' + id);
     return element;
   }
 
   function removeRemoteVideo(id) {
     console.log(' ---- removeRemoteVideo() id=' + id);
-    let element = document.getElementById('remote_' + id);
+    const element = document.getElementById('remote_' + id);
     if (element) {
       element.pause();
       element.srcObject = null;
       remoteContainer.removeChild(element);
+
+      if (isZoomElement(element)) {
+        resetZoom();
+      }
       calcVideoLayout();
     }
     else {
@@ -657,11 +661,18 @@
     const countOthers = countTotal - countZoom;
 
     // -- grid layout --
-    console.log('calcVideoHorzVertCountWithZoom() count=%d, zoom=%d, horz=%d', countTotal, countZoom, countOthers);
+    console.log('calcVideoHorzVertCountWithZoom() count=%d, zoom=%d, others=%d', countTotal, countZoom, countOthers);
     // grid-template-columns: repeat(N-1, 1fr);
     // grid-template-rows: 80% 1fr;
-    remoteContainer.style.gridTemplateColumns = 'repeat(' + countOthers + ', 1fr)';
-    remoteContainer.style.gridTemplateRows = '80% 20%';
+    if (countOthers > 0) {
+      remoteContainer.style.gridTemplateColumns = 'repeat(' + countOthers + ', 1fr)';
+      remoteContainer.style.gridTemplateRows = '80% 20%';
+    }
+    else {
+      // -- NO zoom if only 1 remote video --
+      remoteContainer.style.gridTemplateColumns = '100%';
+      remoteContainer.style.gridTemplateRows = '100%';
+    }
 
     // ----
     //grid-column-start: 1;
