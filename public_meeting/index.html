@@ -64,7 +64,7 @@
   </style>
 </head>
 
-<body onload="calcVideoHorzVertCount(); resizeVideo()" onresize="resizeVideo()">
+<body onload="calcVideoLayout(); resizeVideo()" onresize="resizeVideo()">
   <div id="button_bar" class="bar" style="height:50px;">
     mediasoup v2 meeting with socket.io, multi-room
     <br />
@@ -342,7 +342,13 @@
     element.volume = 1.0; // 0;
     //element.controls = true;
 
-    calcVideoHorzVertCount();
+    // --- click ---
+    element.onclick = function () {
+      console.log('remoteVideo click. id=' + id);
+      toggleZoom(element);
+    }
+
+    calcVideoLayout();
     return element;
   }
 
@@ -358,7 +364,7 @@
       element.pause();
       element.srcObject = null;
       remoteContainer.removeChild(element);
-      calcVideoHorzVertCount();
+      calcVideoLayout();
     }
     else {
       console.log('child element NOT FOUND');
@@ -371,7 +377,7 @@
       remoteContainer.firstChild.srcObject = null;
       remoteContainer.removeChild(remoteContainer.firstChild);
     }
-    calcVideoHorzVertCount();
+    calcVideoLayout();
   }
 
   // ============ UI button ==========
@@ -486,7 +492,6 @@
     }
   }
 
-
   function getRoomFromUrl() {
     const search = window.location.search;
     const re = new RegExp('room=([^&=]+)');
@@ -531,6 +536,15 @@
     //console.log('resizeVideo() barH=%d pannelW=%d conW=%d conH=%d', barHeight, pannelWidth, containerWidth, containerHeight);
     remoteContainer.style.width = containerWidth + 'px';
     remoteContainer.style.height = containerHeight + 'px';
+  }
+
+  function calcVideoLayout() {
+    if (isZoomed()) {
+      calcVideoHorzVertCountWithZoom();
+    }
+    else {
+      calcVideoHorzVertCount();
+    }
   }
 
   function calcVideoHorzVertCount() {
@@ -586,6 +600,84 @@
     remoteContainer.style.gridTemplateRows = 'repeat(' + videoVertCount + ', 1fr)';
   }
 
+  // ---- zoom ----
+  let zoomElement = null;
+
+  function toggleZoom(element) {
+    if (isZoomElement(element)) {
+      resetZoom();
+    }
+    else {
+      setZoom(element);
+    }
+  }
+
+  function setZoom(element) {
+    if (zoomElement && (zoomElement !== element)) {
+      resetZoom();
+    }
+
+    zoomElement = element;
+    calcVideoLayout();
+  }
+
+  function resetZoom() {
+    if (zoomElement) {
+      zoomElement.style.gridColumnStart = null;
+      zoomElement.style.gridColumnEnd = null;
+      zoomElement.style.gridRowStart = null;
+      zoomElement.style.gridRowEnd = null;
+    }
+
+    zoomElement = null;
+    calcVideoLayout();
+  }
+
+  function isZoomed() {
+    if (zoomElement) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  function isZoomElement(element) {
+    return (zoomElement === element);
+  }
+
+  function calcVideoHorzVertCountWithZoom() {
+    if (!isZoomed()) {
+      console.error('NOT Zoomed.');
+      return;
+    }
+
+    const countTotal = remoteContainer.childElementCount;
+    const countZoom = 1;
+    const countOthers = countTotal - countZoom;
+
+    // -- grid layout --
+    console.log('calcVideoHorzVertCountWithZoom() count=%d, zoom=%d, horz=%d', countTotal, countZoom, countOthers);
+    // grid-template-columns: repeat(N-1, 1fr);
+    // grid-template-rows: 80% 1fr;
+    remoteContainer.style.gridTemplateColumns = 'repeat(' + countOthers + ', 1fr)';
+    remoteContainer.style.gridTemplateRows = '80% 20%';
+
+    // ----
+    //grid-column-start: 1;
+    //grid-column-end: 11;
+    //grid-row-start: 1;
+    //grid-row-end: 2;
+    //- ----
+
+    // --- zoom element ---
+    zoomElement.style.gridColumnStart = '' + 1;
+    zoomElement.style.gridColumnEnd = '' + (countOthers + 1);
+    zoomElement.style.gridRowStart = '' + 1;
+    zoomElement.style.gridRowEnd = '' + 2;
+  }
+
+  // --------- initialize ------------
   updateButtons();
   setupRoomFromUrl();
   console.log('=== ready ==='); 
