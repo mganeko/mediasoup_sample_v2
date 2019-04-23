@@ -373,7 +373,9 @@
 
     const newStream = new MediaStream();
     newStream.addTrack(track);
-    playVideo(video, newStream).catch(err => { console.error('media ERROR:', err) });
+    playVideo(video, newStream)
+      .then(() => { video.volume = 1.0 })
+      .catch(err => { console.error('media ERROR:', err) });
 
     return trackKind;
   }
