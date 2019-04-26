@@ -458,6 +458,11 @@
       disableElement('connect_button');
       enabelElement('disconnect_button');
       disableElement('room_name');
+      disableElement('video_size_list');
+
+      disableElement('devices_button');
+      disableElement('camera_list');
+      disableElement('mic_list');
     }
     else {
       disableElement('disconnect_button');
@@ -465,12 +470,23 @@
         disableElement('start_video_button');
         enabelElement('stop_video_button');
         enabelElement('connect_button');
+        disableElement('video_size_list');
+
+        disableElement('devices_button');
+        disableElement('camera_list');
+        disableElement('mic_list');
       }
       else {
         enabelElement('start_video_button');
         disableElement('stop_video_button');
         disableElement('connect_button');
+        enabelElement('video_size_list');
+
+        enabelElement('devices_button');
+        enabelElement('camera_list');
+        enabelElement('mic_list');
       }
+
       if (isRoomSpecifiedByUrl()) {
         disableElement('room_name');
       }
