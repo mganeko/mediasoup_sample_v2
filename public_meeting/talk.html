@@ -593,16 +593,23 @@
 
   function getDeviceList() {
     clearDeviceList();
-    navigator.mediaDevices.enumerateDevices()
-      .then(function (devices) {
-        devices.forEach(function (device) {
-          console.log(device.kind + ": " + device.label +
-            " id = " + device.deviceId);
-          addDevice(device);
-        });
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then(function (stream) {
+        stopLocalStream(stream);
+        navigator.mediaDevices.enumerateDevices()
+          .then(function (devices) {
+            devices.forEach(function (device) {
+              console.log(device.kind + ": " + device.label +
+                " id = " + device.deviceId);
+              addDevice(device);
+            });
+          })
+          .catch(function (err) {
+            console.error('enumerateDevide ERROR:', err);
+          });
       })
       .catch(function (err) {
-        console.error('enumerateDevide ERROR:', err);
+        console.error('getUserMedia(), enumerateDevide ERROR:', err);
       });
   }
 
