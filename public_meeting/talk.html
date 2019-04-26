@@ -570,7 +570,7 @@
       const label = device.label || 'microphone'; // label is available for https 
       const option = document.createElement('option');
       option.setAttribute('value', id);
-      option.innerHTML = label + '(' + id + ')';;
+      option.innerHTML = label; // + '(' + id + ')';;
       micList.appendChild(option);
     }
     else if (device.kind === 'videoinput') {
@@ -578,7 +578,7 @@
       const label = device.label || 'camera'; // label is available for https 
       const option = document.createElement('option');
       option.setAttribute('value', id);
-      option.innerHTML = label + '(' + id + ')';
+      option.innerHTML = label; // + '(' + id + ')';
       cameraList.appendChild(option);
     }
     else if (device.kind === 'audiooutput') {
