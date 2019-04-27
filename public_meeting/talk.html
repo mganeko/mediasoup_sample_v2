@@ -698,7 +698,13 @@
     const audioDevideId = loadLastAudioDevice();
 
     cameraList.value = videoDeviceId;
+    if (cameraList.selectedIndex < 0) {
+      cameraList.selectedIndex = 0;
+    }
     micList.value = audioDevideId;
+    if (micList.selectedIndex < 0) {
+      micList.selectedIndex = 0;
+    }
   }
 
   // ---- resize remote video -------
