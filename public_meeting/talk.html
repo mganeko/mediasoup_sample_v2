@@ -330,6 +330,22 @@
         localStream = stream;
         playVideo(localVideo, localStream);
         updateButtons();
+
+        // --- store selected device id ---
+        storeSelectedDevice(constraints.video.deviceId, constraints.audio.deviceId);
+
+        // -- check --
+        const videoId = loadLastVideoDevice();
+        const audioId = loadLastAudioDevice();
+
+        if ((videoId === constraints.video.deviceId) && (audioId === constraints.audio.deviceId)) {
+          console.log('store, load OK. video=%s, audio=%s', videoId, audioId);
+        }
+        else {
+          console.error('store/load ERROR, video=%s , %s  audio=%s , %s',
+            constraints.video.deviceId, videoId, constraints.audio.deviceId, audioId
+          );
+        }
       })
       .catch(err => {
         console.error('media ERROR:', err);
@@ -603,6 +619,9 @@
                 " id = " + device.deviceId);
               addDevice(device);
             });
+
+            // -- restore last select --
+            restoreLastSelectedDevice();
           })
           .catch(function (err) {
             console.error('enumerateDevide ERROR:', err);
@@ -657,6 +676,29 @@
     };
 
     return constraints;
+  }
+
+  function storeSelectedDevice(idVideo, idAudio) {
+    localStorage.setItem('lastVideoDeviceId', idVideo);
+    localStorage.setItem('lastAudioDeviceId', idAudio);
+  }
+
+  function loadLastVideoDevice() {
+    const id = localStorage.getItem('lastVideoDeviceId');
+    return id;
+  }
+
+  function loadLastAudioDevice() {
+    const id = localStorage.getItem('lastAudioDeviceId');
+    return id;
+  }
+
+  function restoreLastSelectedDevice() {
+    const videoDeviceId = loadLastVideoDevice();
+    const audioDevideId = loadLastAudioDevice();
+
+    cameraList.value = videoDeviceId;
+    micList.value = audioDevideId;
   }
 
   // ---- resize remote video -------
