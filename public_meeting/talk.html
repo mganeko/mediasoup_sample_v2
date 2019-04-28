@@ -419,18 +419,6 @@
       .then(stream => {
         screenStream = stream;
         playVideo(screenVideo, screenStream);
-
-        /*
-        if (room.joined) {
-          // ---- send screen stream ---
-          const videoTrack = stream.getVideoTracks()[0];
-          screenProducer = room.createProducer(videoTrack);
-          screenProducer.appData = 'screen';
-          screenProducer.send(sendTransport)
-            .then(evt => console.log('start send:', evt))
-            .catch(err => console.error('send ERROR:', err));
-        }
-        */
         sendScreenStream(stream);
 
         updateButtons();
