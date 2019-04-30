@@ -680,6 +680,10 @@
     //console.log('resizeVideo() barH=%d pannelW=%d conW=%d conH=%d', barHeight, pannelWidth, containerWidth, containerHeight);
     remoteContainer.style.width = containerWidth + 'px';
     remoteContainer.style.height = containerHeight + 'px';
+
+    if (!isZoomed()) {
+      calcVideoHorzVertCountFlex();
+    }
   }
 
   function calcVideoLayout() {
@@ -687,10 +691,12 @@
       calcVideoHorzVertCountWithZoom();
     }
     else {
-      calcVideoHorzVertCount();
+      //calcVideoHorzVertCount();
+      calcVideoHorzVertCountFlex();
     }
   }
 
+  /*--
   function calcVideoHorzVertCount() {
     const count = remoteContainer.childElementCount;
 
@@ -742,6 +748,53 @@
     remoteContainer.style.gridTemplateColumns = 'repeat(' + videoHorzCount + ', 1fr)';
     //remoteContainer.style.gridTemplateRows = '' + videoHeight + 'px 1fr';
     remoteContainer.style.gridTemplateRows = 'repeat(' + videoVertCount + ', 1fr)';
+  }
+  --*/
+
+  function calcVideoHorzVertCountFlex() {
+    const containerWidth = parseInt(remoteContainer.style.width);
+    const containerHeight = parseInt(remoteContainer.style.height);
+    const memberCount = remoteContainer.childElementCount;
+    const HORZ_MODULATE = (3.0 / 4.0);
+    console.log('containerWidth=%d , containerHeight=%d', containerWidth, containerHeight);
+
+    let tmpHorzCount = 1;
+    let tmpVertCount = 1;
+    while (memberCount > tmpHorzCount * tmpVertCount) {
+      let horzExtendHorzCount = tmpHorzCount + 1;
+      let horzExtendVertCount = tmpVertCount;
+      let horzExtendRatio = (containerWidth / horzExtendHorzCount) / (containerHeight / horzExtendVertCount);
+      let vertExtendHorzCount = tmpHorzCount;
+      let vertExtendVertCount = tmpVertCount + 1;
+      let vertExtendRatio = (containerHeight / vertExtendVertCount) / (containerWidth / vertExtendHorzCount);
+      console.log('horzExtendRatio=%f  vertExtendRatio=%f', horzExtendRatio, vertExtendRatio)
+      if (horzExtendRatio * HORZ_MODULATE >= vertExtendRatio) {
+        tmpHorzCount = horzExtendHorzCount;
+        tmpVertCount = horzExtendVertCount;
+        if (memberCount <= tmpHorzCount * (tmpVertCount - 1)) {
+          tmpVertCount = tmpVertCount - 1;
+        }
+      }
+      else {
+        tmpHorzCount = vertExtendHorzCount;
+        tmpVertCount = vertExtendVertCount;
+        if (memberCount <= (tmpHorzCount - 1) * tmpVertCount) {
+          tmpHorzCount = tmpHorzCount - 1;
+        }
+      }
+    }
+
+    videoHorzCount = tmpHorzCount;
+    videoVertCount = tmpVertCount;
+
+    console.log('calcVideoHorzVertCountFlex() count=%d, horz=%d, vert=%d', memberCount, videoHorzCount, videoVertCount);
+    // grid-template-columns: repeat(2, 1fr);
+    // grid-template-rows: 100px 1fr;
+    remoteContainer.style.gridTemplateColumns = 'repeat(' + videoHorzCount + ', 1fr)';
+    //remoteContainer.style.gridTemplateRows = '' + videoHeight + 'px 1fr';
+    remoteContainer.style.gridTemplateRows = 'repeat(' + videoVertCount + ', 1fr)';
+
+    return;
   }
 
   // ---- zoom ----
