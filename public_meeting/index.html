@@ -68,7 +68,8 @@
   <div id="button_bar" class="bar" style="height:50px;">
     mediasoup v2 meeting with socket.io, multi-room
     <br />
-    <button id="start_video_button" onclick="startMedia();">Start Media</button>
+    <button id="start_video_button" onclick="startVideo();">Start Video</button>
+    <button id="start_audio_button" onclick="startAudioOnly();">Start Audio only</button>
     <button id="stop_video_button" onclick="stopMedia();">Stop Media</button>
     &nbsp;
     <input type="text" id="room_name" placeholder="room name" />
@@ -402,7 +403,7 @@
     //element.height = 180;
     element.className = 'remote_video';
     element.volume = 1.0; // 0;
-    //element.controls = true;
+    element.controls = true;
 
     // --- click ---
     element.onclick = function () {
@@ -457,14 +458,23 @@
   }
 
   // ============ UI button ==========
+  function startVideo() {
+    const mediaConstraints = { audio: true, video: true };
+    startMedia(mediaConstraints);
+  }
 
-  function startMedia() {
+  function startAudioOnly() {
+    const mediaConstraints = { audio: true, video: false };
+    startMedia(mediaConstraints);
+  }
+
+  function startMedia(constraints) {
     if (localStream) {
       console.warn('WARN: local media ALREADY started');
       return;
     }
 
-    navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+    navigator.mediaDevices.getUserMedia(constraints)
       .then((stream) => {
         localStream = stream;
         playVideo(localVideo, localStream);
@@ -581,6 +591,7 @@
   function updateButtons() {
     if (room.joined) {
       disableElement('start_video_button');
+      disableElement('start_audio_button');
       disableElement('stop_video_button');
       disableElement('connect_button');
       enabelElement('disconnect_button');
@@ -590,11 +601,13 @@
       disableElement('disconnect_button');
       if (localStream) {
         disableElement('start_video_button');
+        disableElement('start_audio_button');
         enabelElement('stop_video_button');
         enabelElement('connect_button');
       }
       else {
         enabelElement('start_video_button');
+        enabelElement('start_audio_button');
         disableElement('stop_video_button');
         disableElement('connect_button');
       }
