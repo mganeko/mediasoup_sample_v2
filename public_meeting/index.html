@@ -234,13 +234,17 @@
         const videoTrack = stream.getVideoTracks()[0];
 
         // Send local audio.
-        micProducer = room.createProducer(audioTrack);
-        micProducer.send(sendTransport);
-        toggleMute();
+        if (audioTrack) {
+          micProducer = room.createProducer(audioTrack);
+          micProducer.send(sendTransport);
+          toggleMute();
+        }
 
         // Send local video.
-        camProducer = room.createProducer(videoTrack);
-        camProducer.send(sendTransport);
+        if (videoTrack) {
+          camProducer = room.createProducer(videoTrack);
+          camProducer.send(sendTransport);
+        }
       })
       .catch(err => {
         console.error('catch error ater room.join()', err);
@@ -295,6 +299,13 @@
         const id = consumer.peer.name;
         removeRemoteScreenVideo(id);
       }
+    });
+
+    consumer.on('pause', (originator, appData) => {
+      console.log('-- Consumer paused --');
+    });
+    consumer.on('resume', (originator, appData) => {
+      console.log('-- Consumer resumed --');
     });
   }
 
