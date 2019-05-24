@@ -79,7 +79,7 @@
   <div class="outer_h">
     <div id="local_pannel" class="pannel_h" style="width: 122px;">
       local video<br />
-      <video id="local_video" autoplay style="width: 120px; height: 90px; border: 1px solid black;"></video>
+      <video id="local_video" autoplay poster="mic_icon.png" style="width: 120px; height: 90px; border: 1px solid black;"></video>
       <span id="state_span"></span>
       <button id="start_screen_button" onclick="startScreenShare();">Add Screen</button>
       <button id="stop_screen_button" onclick="stopScreenShare();">Remove Screen</button>
@@ -404,6 +404,7 @@
     element.className = 'remote_video';
     element.volume = 1.0; // 0;
     element.controls = true;
+    element.poster = 'mic_icon.png';
 
     // --- click ---
     element.onclick = function () {
