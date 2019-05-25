@@ -79,7 +79,7 @@
   <div class="outer_h">
     <div id="local_pannel" class="pannel_h" style="width: 122px;">
       local &nbsp <input type="checkbox" id="mute_check" onchange="toggleMute();">mute</input><br />
-      <video id="local_video" autoplay volume=0 poster="mic_icon.png" style="width: 120px; height: 90px; border: 1px solid black;"></video>
+      <video id="local_video" autoplay volume=0 style="width: 120px; height: 90px; border: 1px solid black;"></video>
       <span id="state_span"></span>
       <button id="start_screen_button" onclick="startScreenShare();">Add Screen</button>
       <button id="stop_screen_button" onclick="stopScreenShare();">Remove Screen</button>
@@ -284,6 +284,16 @@
           //consumer.appData = { kind: trackKind };
           consumer.customTrackKind = trackKind
           console.log('--consumer customTrackKind=', consumer.customTrackKind);
+
+          const video = findRemoteVideo(id);
+          if (video) {
+            if (consumer.paused) {
+              video.poster = 'mic_mute.png';
+            }
+            else {
+              video.poster = 'mic_icon.png';
+            }
+          }
         })
         .catch((err) => {
           console.error(err);
@@ -303,9 +313,19 @@
 
     consumer.on('pause', (originator, appData) => {
       console.log('-- Consumer paused --');
+      const id = consumer.peer.name;
+      const video = findRemoteVideo(id);
+      if (video) {
+        video.poster = 'mic_mute.png';
+      }
     });
     consumer.on('resume', (originator, appData) => {
       console.log('-- Consumer resumed --');
+      const id = consumer.peer.name;
+      const video = findRemoteVideo(id);
+      if (video) {
+        video.poster = 'mic_icon.png';
+      }
     });
   }
 
@@ -492,6 +512,7 @@
       .then((stream) => {
         localStream = stream;
         playVideo(localVideo, localStream);
+        toggleMute();
         updateButtons();
       })
       .catch(err => {
@@ -504,6 +525,7 @@
       pauseVideo(localVideo);
       stopLocalStream(localStream);
       localStream = null;
+      toggleMute();
     }
 
     if (screenStream) {
@@ -516,14 +538,25 @@
   }
 
   function toggleMute() {
+    if (!localStream) {
+      localVideo.poster = '';
+      return;
+    };
+
     const isMuted = muteCheck.checked;
-    if (micProducer) {
-      if (isMuted) {
+    if (isMuted) {
+      if (micProducer) {
         micProducer.pause();
       }
-      else {
+      localVideo.poster = 'mic_mute.png';
+      console.log('local muted');
+    }
+    else {
+      if (micProducer) {
         micProducer.resume();
       }
+      localVideo.poster = 'mic_icon.png';
+      console.log('local unmute');
     }
   }
 
