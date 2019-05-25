@@ -439,10 +439,11 @@
     element.controls = true;
     element.poster = 'mic_icon.png';
 
-    // --- click ---
-    element.onclick = function () {
+    // --- click ---d
+    element.onclick = function (event) {
       console.log('remoteVideo click. id=' + id);
       toggleZoom(element);
+      event.preventDefault();
     }
 
     calcVideoLayout();
@@ -655,6 +656,7 @@
       disableElement('connect_button');
       enabelElement('disconnect_button');
       disableElement('room_name');
+      enabelElement('mute_check');
     }
     else {
       disableElement('disconnect_button');
@@ -663,12 +665,14 @@
         disableElement('start_audio_button');
         enabelElement('stop_video_button');
         enabelElement('connect_button');
+        enabelElement('mute_check');
       }
       else {
         enabelElement('start_video_button');
         enabelElement('start_audio_button');
         disableElement('stop_video_button');
         disableElement('connect_button');
+        disableElement('mute_check');
       }
       if (isRoomSpecifiedByUrl()) {
         disableElement('room_name');
