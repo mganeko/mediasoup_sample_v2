@@ -1,10 +1,11 @@
 <!doctype html>
 <html>
+
 <head>
- <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
- <meta charset="charset=UTF-8" />
- <title>mediasoup v2 single room</title>
- <!--
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="charset=UTF-8" />
+  <title>mediasoup v2 single room</title>
+  <!--
    // mediasoup_sample_v2
    //   https://github.com/mganeko/mediasoup_sample_v2
    //   mediasoup_sample is provided under MIT license
@@ -12,15 +13,16 @@
    //   This sample is using https://github.com/versatica/mediasoup
    //   This sample is based on https://github.com/footniko/mediasoup-sample
  -->
- <script src="js/mediasoup-client.min.js"></script>
+  <script src="js/mediasoup-client.min.js"></script>
 </head>
+
 <body>
   mediasoup v2 with websocket<br />
   <button id="start_video_button" onclick="startMedia();">Start Media</button>
   <button id="stop_video_button" onclick="stopMedia();">Stop Media</button>
   &nbsp;
-  <button id="connect_button"  onclick="connect();">Connect</button>
-  <button id="disconnect_button"  onclick="dissconnect();">Disconnect</button> 
+  <button id="connect_button" onclick="connect();">Connect</button>
+  <button id="disconnect_button" onclick="disconnect();">Disconnect</button>
   <div>
     local video<br />
     <video id="local_video" autoplay style="width: 120px; height: 90px; border: 1px solid black;"></video>
@@ -40,21 +42,21 @@
   // =========== websocket ========== 
   let wsProtocol = 'ws://';
   let protocol = window.location.protocol;
-  if  (protocol === 'https:') {
+  if (protocol === 'https:') {
     wsProtocol = 'wss://';
   }
-  let wsUrl = wsProtocol +  window.location.hostname + ':' + window.location.port + '/';
+  let wsUrl = wsProtocol + window.location.hostname + ':' + window.location.port + '/';
   console.log('websocket url=' + wsUrl);
   let ws = new WebSocket(wsUrl);
 
   let clientId = null;
-  ws.onopen = function(evt) {
+  ws.onopen = function (evt) {
     console.log('ws open()');
   };
-  ws.onerror = function(err) {
+  ws.onerror = function (err) {
     console.error('ws onerror() ERR:', err);
   };
-  ws.onmessage = function(evt) {
+  ws.onmessage = function (evt) {
     let message = JSON.parse(evt.data);
     console.log('ws onmessage() message.type=' + message.type);
 
@@ -81,15 +83,15 @@
       console.error('UNKNOWN message from server:', message);
     }
   };
-  
+
   function sendRequest(request, callback, errback) {
     _setResponseHandler(callback, errback);
-    let message =  { type: 'client_request', request: request };
+    let message = { type: 'client_request', request: request };
     sendJson(message);
   }
 
   function sendNotify(notification) {
-    let message =  { type: 'client_notify', notification: notification };
+    let message = { type: 'client_notify', notification: notification };
     sendJson(message);
   }
 
@@ -125,7 +127,7 @@
 
     // --- websocket --
     const message = JSON.stringify(json);
-    ws.send(message);  
+    ws.send(message);
   }
 
 
@@ -138,17 +140,17 @@
   let sendTransport = null;
   let recvTransport = null;
 
-  room.on('request', function(request, callback, errback) {
+  room.on('request', function (request, callback, errback) {
     console.log('--- on request, method=' + request.method);
     console.log(request);
     sendRequest(request, callback, errback);
   });
-  room.on('notify', function(notification) {
+  room.on('notify', function (notification) {
     console.log('--- notify from local room:', notification);
     sendNotify(notification);
 
   });
-  room.on('newpeer', function(peer) {
+  room.on('newpeer', function (peer) {
     console.log('=== newpeer ====');
     handlePeer(peer);
   });
@@ -161,38 +163,38 @@
     }
 
     room.join(peername)
-    .then((peers) => {
-      console.info("room joined:", peers);
-      updateButtons();
+      .then((peers) => {
+        console.info("room joined:", peers);
+        updateButtons();
 
-      // Create a Transport for sending local media.
-      sendTransport = room.createTransport('send');
+        // Create a Transport for sending local media.
+        sendTransport = room.createTransport('send');
 
-      // Create a Transport for receiving media from remote Peers.
-      recvTransport = room.createTransport('recv');
+        // Create a Transport for receiving media from remote Peers.
+        recvTransport = room.createTransport('recv');
 
-      // --- setup peers ---
-      peers.forEach(peer => handlePeer(peer));
+        // --- setup peers ---
+        peers.forEach(peer => handlePeer(peer));
 
-      console.log('--peers setup end --');
-    })
-    .then(() => {
-      console.log('-- add local stream --');
-      // ---- add local stream ---
-      const audioTrack = stream.getAudioTracks()[0];
-      const videoTrack = stream.getVideoTracks()[0];
+        console.log('--peers setup end --');
+      })
+      .then(() => {
+        console.log('-- add local stream --');
+        // ---- add local stream ---
+        const audioTrack = stream.getAudioTracks()[0];
+        const videoTrack = stream.getVideoTracks()[0];
 
-      // Send local audio.
-      micProducer = room.createProducer(audioTrack);
-      micProducer.send(sendTransport);
+        // Send local audio.
+        micProducer = room.createProducer(audioTrack);
+        micProducer.send(sendTransport);
 
-      // Send local video.
-      camProducer = room.createProducer(videoTrack);
-      camProducer.send(sendTransport);
-    })
-    .catch(err  => {
-      console.error('catch error ater room.join()', err);
-    });
+        // Send local video.
+        camProducer = room.createProducer(videoTrack);
+        camProducer.send(sendTransport);
+      })
+      .catch(err => {
+        console.error('catch error ater room.join()', err);
+      });
   }
 
   function handlePeer(peer) {
@@ -200,15 +202,15 @@
     const consumers = peer.consumers;
     consumers.forEach(consumer => handleConsumer(consumer));
 
-    peer.on('close', function() {
+    peer.on('close', function () {
       console.log('--- remote peer clolsed. name/id=' + peer.name);
 
       // --- stop remote video ---
       const id = peer.name;
       removeRemoteVideo(id);
     });
-    
-    peer.on('newconsumer', function(consumer) {
+
+    peer.on('newconsumer', function (consumer) {
       console.log('--newconsumer');
 
       // -- setup new consumser --
@@ -220,14 +222,14 @@
     console.log('handleConsumer peer=' + consumer.peer.name);
     if (recvTransport) {
       consumer.receive(recvTransport)
-      .then((track) => {
-        console.log('-- remoteStream track kind=' + track.kind);
-        const id = consumer.peer.name;
-        addRemoteTrack(id, track);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
+        .then((track) => {
+          console.log('-- remoteStream track kind=' + track.kind);
+          const id = consumer.peer.name;
+          addRemoteTrack(id, track);
+        })
+        .catch((err) => {
+          console.error(err);
+        });
     }
     else {
       console.error('recvTransport NOT READY');
@@ -241,11 +243,11 @@
   // =========== media handling ========== 
   function stopLocalStream(stream) {
     let tracks = stream.getTracks();
-    if (! tracks) {
+    if (!tracks) {
       console.warn('NO tracks');
       return;
     }
-    
+
     tracks.forEach(track => track.stop());
   }
 
@@ -267,7 +269,7 @@
 
   function addRemoteTrack(id, track) {
     let video = findRemoteVideo(id);
-    if (! video) {
+    if (!video) {
       video = addRemoteVideo(id);
     }
 
@@ -278,7 +280,7 @@
 
     const newStream = new MediaStream();
     newStream.addTrack(track);
-    playVideo(video, newStream).catch(err => { console.error('media ERROR:', err)});
+    playVideo(video, newStream).catch(err => { console.error('media ERROR:', err) });
   }
 
   function addRemoteVideo(id) {
@@ -287,7 +289,7 @@
       console.warn('remoteVideo element ALREADY exist for id=' + id);
       return existElement;
     }
-    
+
     let element = document.createElement('video');
     remoteContainer.appendChild(element);
     element.id = 'remote_' + id;
@@ -297,7 +299,7 @@
     //element.controls = true;
     return element;
   }
-  
+
   function findRemoteVideo(id) {
     let element = document.getElementById('remote_' + id);
     return element;
@@ -333,20 +335,19 @@
     }
 
     navigator.mediaDevices.getUserMedia({ audio: true, video: true })
-    .then((stream) =>
-    {
-      localStream = stream;
-      playVideo(localVideo, localStream);
-      updateButtons();
-    })
-    .catch(err => {
-      console.error('media ERROR:', err);
-    });
+      .then((stream) => {
+        localStream = stream;
+        playVideo(localVideo, localStream);
+        updateButtons();
+      })
+      .catch(err => {
+        console.error('media ERROR:', err);
+      });
   }
 
   function stopMedia() {
     if (localStream) {
-      pauseVideo(localVideo,);
+      pauseVideo(localVideo);
       stopLocalStream(localStream);
       localStream = null;
     }
@@ -354,7 +355,7 @@
   }
 
   function connect() {
-    if (! localStream) {
+    if (!localStream) {
       console.warn('WARN: local media NOT READY');
       return;
     }
@@ -364,7 +365,7 @@
     joinRoom(clientId, localStream);
   }
 
-  function dissconnect() {
+  function disconnect() {
     room.leave(clientId); // not promise
     micProducer = null;
     camProducer = null;
@@ -391,7 +392,7 @@
       else {
         enabelElement('start_video_button');
         disableElement('stop_video_button');
-        disableElement('connect_button');        
+        disableElement('connect_button');
       }
     }
   }
@@ -407,10 +408,11 @@
     let element = document.getElementById(id);
     if (element) {
       element.setAttribute('disabled', '1');
-    }    
+    }
   }
 
   updateButtons();
   console.log('=== ready ==='); 
 </script>
+
 </html>
