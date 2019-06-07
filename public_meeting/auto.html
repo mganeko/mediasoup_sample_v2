@@ -1,0 +1,1037 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="charset=UTF-8" />
+  <title>mediasoup v2 multi room</title>
+  <!--
+   // mediasoup_sample_v2
+   //   https://github.com/mganeko/mediasoup_sample_v2
+   //   mediasoup_sample is provided under MIT license
+   //
+   //   This sample is using https://github.com/versatica/mediasoup
+   //   This sample is based on https://github.com/footniko/mediasoup-sample
+ -->
+  <script>
+    window.localStorage.setItem('debug', 'mediasoup-client:WARN* mediasoup-client:ERROR*');
+  </script>
+  <script src="js/mediasoup-client.min.js"></script>
+  <script src="js/room_options.js"></script>
+  <script src="socket.io/socket.io.js"></script>
+  <style>
+    .bar {
+      border: rgb(223, 223, 223) solid 1px;
+      height: 50px;
+      background-color: rgb(230, 230, 230);
+    }
+
+    .outer_h {
+      display: grid;
+      grid-template-columns: 124px 1fr;
+      grid-template-rows: 1fr;
+    }
+
+    .pannel_h {
+      height: 100%;
+      width: 122px;
+    }
+
+    .outer_v {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: 100px 1fr;
+    }
+
+    .pannel_v {
+      border: red solid 1px;
+      width: 100%;
+    }
+
+    .wrapper {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: 100px 1fr;
+      column-gap: 4px;
+      row-gap: 4px;
+    }
+
+    .remote_video {
+      border: rgb(192, 192, 192) solid 1px;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+
+<body onload="calcVideoLayout(); resizeVideo()" onresize="resizeVideo()">
+  <div id="button_bar" class="bar" style="height:50px;">
+    mediasoup v2 meeting with socket.io, multi-room
+    <br />
+    <input type="text" id="room_name" placeholder="room name" />
+    &nbsp;
+    <button id="start_video_button" onclick="connectVideo();">Connect Video</button>
+    <button id="start_audio_button" onclick="connectAudioOnly();">Connect Audio only</button>
+    <button id="stop_video_button" onclick="stopMedia();" style="display:none;">Stop Media</button>
+    &nbsp;
+    <button id="connect_button" onclick="connect();" style="display:none;">Connect</button>
+    <button id="disconnect_button" onclick="disconnectMedia();">Disconnect</button>
+  </div>
+  <div class="outer_h">
+    <div id="local_pannel" class="pannel_h" style="width: 122px;">
+      local &nbsp <input type="checkbox" id="mute_check" onchange="toggleMute();">mute</input><br />
+      <video id="local_video" autoplay volume=0 style="width: 120px; height: 90px; border: 1px solid black;"></video>
+      <span id="state_span"></span>
+      <button id="start_screen_button" onclick="startScreenShare();">Add Screen</button>
+      <button id="stop_screen_button" onclick="stopScreenShare();">Remove Screen</button>
+      <video id="screen_video" autoplay style="width: 120px; height: 90px; border: 1px solid black;"></video>
+    </div>
+    <!-- remote video<br /> -->
+    <div id="remote_container" class="wrapper">
+    </div>
+  </div>
+</body>
+<script>
+  const localVideo = document.getElementById('local_video');
+  const screenVideo = document.getElementById('screen_video');
+  const remoteContainer = document.getElementById('remote_container');
+  //const remoteVideo = document.getElementById('remote_video');
+  const stateSpan = document.getElementById('state_span');
+  const roomName = document.getElementById('room_name');
+  const muteCheck = document.getElementById('mute_check');
+  let localStream = null;
+  let screenStream = null;
+  let clientId = null;
+  //let roomId = 'anther_room';
+
+  // =========== socket.io ========== 
+  let socket = null;
+
+  // return Promise
+  function connectSocket() {
+    if (socket) {
+      socket.close();
+      socket = null;
+      clientId = null;
+    }
+
+    return new Promise((resolve, reject) => {
+      socket = io.connect('/');
+      socket.on('connect', function (evt) {
+        //console.log('socket.io connected. enter room=' + room );
+        //socket.emit('enter', room);
+        console.log('socket.io connected()');
+        //resolve();
+      });
+      socket.on('error', function (err) {
+        console.error('socket.io ERROR:', err);
+        reject(err);
+      });
+      socket.on('disconnect', function (evt) {
+        console.log('socket.io disconnect:', evt);
+      });
+      socket.on('message', function (message) {
+        console.log('socket.io message:', message);
+        if (message.type === 'welcome') {
+          if (socket.id !== message.id) {
+            console.warn('WARN: something wrong with clientID', socket.io, message.id);
+          }
+
+          clientId = message.id;
+          console.log('connected to server. clientId=' + clientId);
+          resolve();
+        }
+        else if (message.type === 'server_notify') {
+          const notification = message.notification;
+          console.debug('New notification came from server:', notification);
+          room.receiveNotification(notification);
+        }
+        else {
+          console.error('UNKNOWN message from server:', message);
+        }
+      });
+    });
+  }
+
+  function disconnectSocket() {
+    if (socket) {
+      socket.close();
+      socket = null;
+      clientId = null;
+      console.log('socket.io closed..');
+    }
+  }
+
+  function sendRequest(request, callback, errback) {
+    socket.emit('client_request', request, (err, response) => {
+      if (!err) {
+        // Success response, so pass the mediasoup response to the local Room.
+        callback(response);
+      } else {
+        errback(err);
+      }
+    });
+  }
+
+  function sendNotify(notification) {
+    socket.emit('client_notify', notification);
+  }
+
+  function prepareRoom(roomId) {
+    socket.emit('prepare_room', roomId);
+  }
+
+  // =========== mediasoup ========== 
+  console.log('=== Mediasoup Device support:', mediasoupClient.isDeviceSupported());
+  const room = new mediasoupClient.Room(roomOptions);
+  let micProducer = null;
+  let camProducer = null;
+  let screenProducer = null;
+  let sendTransport = null;
+  let recvTransport = null;
+
+  room.on('request', function (request, callback, errback) {
+    console.log('--- on request, method=' + request.method);
+    console.log(request);
+    sendRequest(request, callback, errback);
+  });
+  room.on('notify', function (notification) {
+    console.log('--- notify from local room:', notification);
+    sendNotify(notification);
+
+  });
+  room.on('newpeer', function (peer) {
+    console.log('=== newpeer ====');
+    handlePeer(peer);
+  });
+
+
+  function joinRoom(peername, stream) {
+    if (room.joined) {
+      console.warn('ALREADY joining room');
+      return;
+    }
+
+    room.join(peername)
+      .then((peers) => {
+        console.info("room joined:", peers);
+        updateButtons();
+
+        // Create a Transport for sending local media.
+        sendTransport = room.createTransport('send');
+
+        // Create a Transport for receiving media from remote Peers.
+        recvTransport = room.createTransport('recv');
+
+        // --- setup peers ---
+        peers.forEach(peer => handlePeer(peer));
+
+        console.log('--peers setup end --');
+      })
+      .then(() => {
+        console.log('-- add local stream --');
+        // ---- add local stream ---
+        const audioTrack = stream.getAudioTracks()[0];
+        const videoTrack = stream.getVideoTracks()[0];
+
+        // Send local audio.
+        if (audioTrack) {
+          micProducer = room.createProducer(audioTrack);
+          micProducer.send(sendTransport);
+          toggleMute();
+        }
+
+        // Send local video.
+        if (videoTrack) {
+          camProducer = room.createProducer(videoTrack);
+          camProducer.send(sendTransport);
+        }
+      })
+      .catch(err => {
+        console.error('catch error ater room.join()', err);
+      });
+  }
+
+  function handlePeer(peer) {
+    // --- setup consumers ---
+    const consumers = peer.consumers;
+    consumers.forEach(consumer => handleConsumer(consumer));
+
+    peer.on('close', function () {
+      console.log('--- remote peer clolsed. name/id=' + peer.name);
+
+      // --- stop remote video ---
+      const id = peer.name;
+      removeRemoteVideo(id);
+      removeRemoteScreenVideo(id);
+    });
+
+    peer.on('newconsumer', function (consumer) {
+      console.log('--newconsumer');
+
+      // -- setup new consumser --
+      handleConsumer(consumer);
+    });
+  }
+
+  function handleConsumer(consumer) {
+    console.log('handleConsumer peer=' + consumer.peer.name);
+    if (recvTransport) {
+      consumer.receive(recvTransport)
+        .then((track) => {
+          console.log('-- remoteStream track kind=%s, consumer(id=%d, appData=%s, peer.name=%s)', track.kind, consumer.id, consumer.appData, consumer.peer.name);
+          const id = consumer.peer.name;
+          const trackKind = addRemoteTrack(id, track);
+          //consumer.appData = { kind: trackKind };
+          consumer.customTrackKind = trackKind
+          console.log('--consumer customTrackKind=', consumer.customTrackKind);
+
+          const video = findRemoteVideo(id);
+          if (video) {
+            if (consumer.paused) {
+              video.poster = 'mic_mute.png';
+            }
+            else {
+              video.poster = 'mic_icon.png';
+            }
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    }
+    else {
+      console.error('recvTransport NOT READY');
+    }
+
+    consumer.on('close', (originator) => {
+      const id = consumer.peer.name;
+      console.log('---- Consumer closed ----', id, originator, consumer.customTrackKind);
+      if (consumer.customTrackKind === 'screen') {
+        removeRemoteScreenVideo(id);
+      }
+      else {
+        const video = findRemoteVideo(id);
+        if (!video) {
+          console.warn('WARN: track closed, but no element');
+          return;
+        }
+        if (!video.srcObject) {
+          console.warn('WARN: track closed, but no srcObject');
+          return;
+        }
+
+        // ---- remove video track ---
+        if (consumer.customTrackKind === 'video') {
+          console.log('remove track (%s) from videoElement', consumer.customTrackKind);
+          video.srcObject.getVideoTracks().forEach(track => {
+            video.srcObject.removeTrack(track);
+          });
+          const lastPoster = video.poster;
+          video.poster = '';
+          video.poster = lastPoster;
+        }
+        else if (consumer.customTrackKind === 'audio') {
+          // --- remove audio track --
+          console.log('remove track (%s) from videoElement', consumer.customTrackKind);
+          video.srcObject.getAudioTracks().forEach(track => {
+            video.srcObject.removeTrack(track);
+          });
+        }
+      }
+    });
+
+    consumer.on('pause', (originator, appData) => {
+      console.log('-- Consumer paused --');
+      const id = consumer.peer.name;
+      const video = findRemoteVideo(id);
+      if (video) {
+        video.poster = 'mic_mute.png';
+      }
+    });
+    consumer.on('resume', (originator, appData) => {
+      console.log('-- Consumer resumed --');
+      const id = consumer.peer.name;
+      const video = findRemoteVideo(id);
+      if (video) {
+        video.poster = 'mic_icon.png';
+      }
+    });
+  }
+
+  // =========== media handling ========== 
+  function stopLocalStream(stream) {
+    let tracks = stream.getTracks();
+    if (!tracks) {
+      console.warn('NO tracks');
+      return;
+    }
+
+    tracks.forEach(track => track.stop());
+  }
+
+  // return Promise
+  function playVideo(element, stream) {
+    if (element.srcObject) {
+      console.warn('element ALREADY playing, so ignore');
+      return;
+    }
+    element.srcObject = stream;
+    element.volume = 0;
+    return element.play();
+  }
+
+  function pauseVideo(element) {
+    element.pause();
+    element.srcObject = null;
+  }
+
+  function addRemoteTrack(id, track) {
+    let trackKind = '';
+    let video = findRemoteVideo(id);
+    if (video) {
+      if (video.srcObject) {
+        if (track.kind === 'video') {
+          // --- if no video track, then use the videoElement --
+          if (!hasVideoTrack(video.srcObject)) {
+            console.log('use existing videoElement for videoTrack');
+            video.srcObject.addTrack(track);
+            trackKind = 'video';
+            return trackKind;
+          }
+          else {
+            // --- need new video element (for screen)----
+            console.warn('--- prepare new videoElement for screen ----');
+            video = addRemoteScreenVideo(id);
+            trackKind = 'screen';
+          }
+        }
+        else {
+          // --- audio --- (assume no 2nd audo track)
+          console.log('use existing videoElement for audioTrack');
+          video.srcObject.addTrack(track);
+          trackKind = 'audio';
+          return trackKind;
+        }
+      }
+      else {
+        // -- found videoElement, but no stream --
+        // use videoElement
+        console.log('use existing videoElement, no stream yet');
+      }
+    }
+    else {
+      video = addRemoteVideo(id);
+      trackKind = track.kind;
+    }
+
+    //if (video.srcObject) {
+    //  video.srcObject.addTrack(track);
+    //  return;
+    //}
+
+    const newStream = new MediaStream();
+    newStream.addTrack(track);
+    playVideo(video, newStream)
+      .then(() => { video.volume = 1.0 })
+      .catch(err => { console.error('media ERROR:', err) });
+
+    return trackKind;
+  }
+
+  function hasVideoTrack(stream) {
+    if (!stream) {
+      return false;
+    }
+
+    const tracks = stream.getVideoTracks();
+    if (tracks.length > 0) {
+      return true;
+    }
+
+    return false;
+  }
+
+  function addRemoteVideo(id) {
+    let existElement = findRemoteVideo(id);
+    if (existElement) {
+      console.warn('remoteVideo element ALREADY exist for id=' + id);
+      return existElement;
+    }
+
+    let element = document.createElement('video');
+    remoteContainer.appendChild(element);
+    element.id = 'remote_' + id;
+    //element.width = 240;
+    //element.height = 180;
+    element.className = 'remote_video';
+    element.volume = 1.0; // 0;
+    element.controls = true;
+    element.poster = 'mic_icon.png';
+
+    // --- click ---d
+    element.onclick = function (event) {
+      console.log('remoteVideo click. id=' + id);
+      toggleZoom(element);
+      event.preventDefault();
+    }
+
+    calcVideoLayout();
+    return element;
+  }
+
+  function findRemoteVideo(id) {
+    const element = document.getElementById('remote_' + id);
+    return element;
+  }
+
+  function removeRemoteVideo(id) {
+    console.log(' ---- removeRemoteVideo() id=' + id);
+    const element = document.getElementById('remote_' + id);
+    if (element) {
+      element.pause();
+      element.srcObject = null;
+      remoteContainer.removeChild(element);
+
+      if (isZoomElement(element)) {
+        resetZoom();
+      }
+      calcVideoLayout();
+    }
+    else {
+      console.log('child element NOT FOUND');
+    }
+  }
+
+  function removeAllRemoteVideo() {
+    while (remoteContainer.firstChild) {
+      remoteContainer.firstChild.pause();
+      remoteContainer.firstChild.srcObject = null;
+      remoteContainer.removeChild(remoteContainer.firstChild);
+    }
+    calcVideoLayout();
+  }
+
+  function addRemoteScreenVideo(id) {
+    const screenId = 'screen_' + id;
+    return addRemoteVideo(screenId);
+  }
+
+  function removeRemoteScreenVideo(id) {
+    const screenId = 'screen_' + id;
+    removeRemoteVideo(screenId);
+  }
+
+  // ============ UI button ==========
+  function connectVideo() {
+    const mediaConstraints = { audio: true, video: true };
+    connectMedia(mediaConstraints);
+  }
+
+  function connectAudioOnly() {
+    const mediaConstraints = { audio: true, video: false };
+    connectMedia(mediaConstraints);
+  }
+
+  function connectMedia(constraints) {
+    if (localStream) {
+      console.warn('WARN: local media ALREADY started. But try connect');
+      connect();
+      return;
+    }
+
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then((stream) => {
+        localStream = stream;
+        playVideo(localVideo, localStream)
+          .then(() => {
+            toggleMute();
+            connect();
+          })
+          .catch(err => console.error(err));
+
+        updateButtons();
+      })
+      .catch(err => {
+        console.error('media ERROR:', err);
+      });
+  }
+
+  function startVideo() {
+    const mediaConstraints = { audio: true, video: true };
+    startMedia(mediaConstraints);
+  }
+
+  function startAudioOnly() {
+    const mediaConstraints = { audio: true, video: false };
+    startMedia(mediaConstraints);
+  }
+
+  function startMedia(constraints) {
+    if (localStream) {
+      console.warn('WARN: local media ALREADY started');
+      return;
+    }
+
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then((stream) => {
+        localStream = stream;
+        playVideo(localVideo, localStream);
+        toggleMute();
+        updateButtons();
+      })
+      .catch(err => {
+        console.error('media ERROR:', err);
+      });
+  }
+
+  function stopMedia() {
+    if (localStream) {
+      pauseVideo(localVideo);
+      stopLocalStream(localStream);
+      localStream = null;
+      toggleMute();
+    }
+
+    if (screenStream) {
+      pauseVideo(screenVideo);
+      stopLocalStream(screenStream);
+      screenStream = null;
+    }
+
+    updateButtons();
+  }
+
+  function toggleMute() {
+    if (!localStream) {
+      localVideo.poster = '';
+      return;
+    };
+
+    const isMuted = muteCheck.checked;
+    if (isMuted) {
+      if (micProducer) {
+        micProducer.pause();
+      }
+      localVideo.poster = 'mic_mute.png';
+      console.log('local muted');
+    }
+    else {
+      if (micProducer) {
+        micProducer.resume();
+      }
+      localVideo.poster = 'mic_icon.png';
+      console.log('local unmute');
+    }
+  }
+
+  async function connect() {
+    if (!localStream) {
+      console.warn('WARN: local media NOT READY');
+      return;
+    }
+
+    // --- connect socket.io ---
+    await connectSocket().catch(err => {
+      console.error(err);
+      return;
+    });
+
+    // --- prepare room ---
+    let roomName = getRoomName();
+    if ((roomName) && (roomName !== '')) {
+      console.log('prepareRoom roomName=' + roomName);
+      prepareRoom(roomName);
+    }
+
+    // --- join room ---
+    console.log('try join room as:' + clientId);
+    joinRoom(clientId, localStream);
+  }
+
+  function disconnect() {
+    room.leave(clientId); // not promise
+    micProducer = null;
+    camProducer = null;
+    screenProducer = null;
+    sendTransport = null;
+    recvTransport = null;
+
+    disconnectSocket();
+    updateButtons();
+  }
+
+  function disconnectMedia() {
+    disconnect();
+    stopMedia();
+    updateButtons();
+  }
+
+
+  function getRoomName() {
+    const name = roomName.value;
+    return name;
+  }
+
+  function startScreenShare() {
+    if (screenStream) {
+      console.warn('Screen ALREADY captured');
+      return;
+    }
+
+    navigator.mediaDevices.getDisplayMedia({ video: true })
+      .then(stream => {
+        screenStream = stream;
+        playVideo(screenVideo, screenStream);
+        sendScreenStream(stream);
+
+        updateButtons();
+      })
+      .catch(err => {
+        console.error('media ERROR:', err);
+      })
+  }
+
+  function sendScreenStream(stream) {
+    if (room.joined) {
+      // ---- send screen stream ---
+      const videoTrack = stream.getVideoTracks()[0];
+      screenProducer = room.createProducer(videoTrack);
+      screenProducer.appData = 'screen';
+      screenProducer.send(sendTransport)
+        .then(evt => console.log('start screen send:', evt))
+        .catch(err => console.error('screen send ERROR:', err));
+    }
+  }
+
+  function stopScreenShare() {
+    if (screenProducer) {
+      screenProducer.close('close_screen');
+      screenProducer = null;
+    }
+
+    if (screenStream) {
+      pauseVideo(screenVideo);
+      stopLocalStream(screenStream);
+      screenStream = null;
+    }
+    updateButtons();
+  }
+
+  // ---- UI control ----
+  function updateButtons() {
+    if (room.joined) {
+      disableElement('start_video_button');
+      disableElement('start_audio_button');
+      disableElement('stop_video_button');
+      disableElement('connect_button');
+      enabelElement('disconnect_button');
+      disableElement('room_name');
+      enabelElement('mute_check');
+    }
+    else {
+      disableElement('disconnect_button');
+      if (localStream) {
+        disableElement('start_video_button');
+        disableElement('start_audio_button');
+        enabelElement('stop_video_button');
+        enabelElement('connect_button');
+        enabelElement('mute_check');
+      }
+      else {
+        enabelElement('start_video_button');
+        enabelElement('start_audio_button');
+        disableElement('stop_video_button');
+        disableElement('connect_button');
+        disableElement('mute_check');
+      }
+      if (isRoomSpecifiedByUrl()) {
+        disableElement('room_name');
+      }
+      else {
+        enabelElement('room_name');
+      }
+    }
+
+    if (room.joined) {
+      if (screenStream) {
+        disableElement('start_screen_button');
+        enabelElement('stop_screen_button');
+      }
+      else {
+        enabelElement('start_screen_button');
+        disableElement('stop_screen_button');
+      }
+    }
+    else {
+      disableElement('start_screen_button');
+      disableElement('stop_screen_button');
+    }
+  }
+
+  function enabelElement(id) {
+    let element = document.getElementById(id);
+    if (element) {
+      element.removeAttribute('disabled');
+    }
+  }
+
+  function disableElement(id) {
+    let element = document.getElementById(id);
+    if (element) {
+      element.setAttribute('disabled', '1');
+    }
+  }
+
+  function getRoomFromUrl() {
+    const search = window.location.search;
+    const re = new RegExp('room=([^&=]+)');
+    const results = re.exec(search);
+    let room = '';
+    if (results) {
+      room = results[1];
+    }
+    return room;
+  }
+
+  function isRoomSpecifiedByUrl() {
+    let room = getRoomFromUrl();
+    if ((room) && (room !== '')) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  function setupRoomFromUrl() {
+    let room = getRoomFromUrl();
+    if ((room) && (room !== '')) {
+      roomName.value = room;
+    }
+  }
+
+  // ---- resize remote video -------
+  let videoHorzCount = 1;
+  let videoVertCount = 1;
+  function resizeVideo() {
+    // --- calc container size limit ---
+    const margin = 20;
+    const winWidth = window.innerWidth;
+    const winHeight = window.innerHeight;
+    //console.log('resizeVideo() count=%d winWidth=%d winHeight=%d', count, winWidth, winHeight);
+    const barHeight = parseInt(document.getElementById('button_bar').style.height, 10); //bottom;
+    const pannelWidth = parseInt(document.getElementById('local_pannel').style.width, 10); //right;
+    const containerWidth = winWidth - pannelWidth - margin;
+    const containerHeight = winHeight - barHeight - margin;
+    //console.log('resizeVideo() barH=%d pannelW=%d conW=%d conH=%d', barHeight, pannelWidth, containerWidth, containerHeight);
+    remoteContainer.style.width = containerWidth + 'px';
+    remoteContainer.style.height = containerHeight + 'px';
+
+    if (!isZoomed()) {
+      calcVideoHorzVertCountFlex();
+    }
+  }
+
+  function calcVideoLayout() {
+    if (isZoomed()) {
+      calcVideoHorzVertCountWithZoom();
+    }
+    else {
+      //calcVideoHorzVertCount();
+      calcVideoHorzVertCountFlex();
+    }
+  }
+
+  /*--
+  function calcVideoHorzVertCount() {
+    const count = remoteContainer.childElementCount;
+
+    if (count <= 1) {
+      videoHorzCount = 1;
+      videoVertCount = 1;
+    }
+    else if (count <= 2) {
+      videoHorzCount = 2;
+      videoVertCount = 1;
+    }
+    else if (count <= 4) {
+      videoHorzCount = 2;
+      videoVertCount = 2;
+    }
+    else if (count <= 6) {
+      videoHorzCount = 3;
+      videoVertCount = 2;
+    }
+    else if (count <= 9) {
+      videoHorzCount = 3;
+      videoVertCount = 3;
+    }
+    else if (count <= 12) {
+      videoHorzCount = 4;
+      videoVertCount = 3;
+    }
+    else if (count <= 16) {
+      videoHorzCount = 4;
+      videoVertCount = 4;
+    }
+    else if (count <= 20) {
+      videoHorzCount = 5;
+      videoVertCount = 4;
+    }
+    else if (count <= 25) {
+      videoHorzCount = 5;
+      videoVertCount = 5;
+    }
+    else {
+      console.warn('TOO MANY remote video elements');
+      videoHorzCount = 5;
+      videoVertCount = 5;
+    }
+
+    console.log('calcVideoHorzVertCount() count=%d, horz=%d, vert=%d', count, videoHorzCount, videoVertCount);
+    // grid-template-columns: repeat(2, 1fr);
+    // grid-template-rows: 100px 1fr;
+    remoteContainer.style.gridTemplateColumns = 'repeat(' + videoHorzCount + ', 1fr)';
+    //remoteContainer.style.gridTemplateRows = '' + videoHeight + 'px 1fr';
+    remoteContainer.style.gridTemplateRows = 'repeat(' + videoVertCount + ', 1fr)';
+  }
+  --*/
+
+  function calcVideoHorzVertCountFlex() {
+    const containerWidth = parseInt(remoteContainer.style.width);
+    const containerHeight = parseInt(remoteContainer.style.height);
+    const memberCount = remoteContainer.childElementCount;
+    const HORZ_MODULATE = (3.0 / 4.0);
+    console.log('containerWidth=%d , containerHeight=%d', containerWidth, containerHeight);
+
+    let tmpHorzCount = 1;
+    let tmpVertCount = 1;
+    while (memberCount > tmpHorzCount * tmpVertCount) {
+      let horzExtendHorzCount = tmpHorzCount + 1;
+      let horzExtendVertCount = tmpVertCount;
+      let horzExtendRatio = (containerWidth / horzExtendHorzCount) / (containerHeight / horzExtendVertCount);
+      let vertExtendHorzCount = tmpHorzCount;
+      let vertExtendVertCount = tmpVertCount + 1;
+      let vertExtendRatio = (containerHeight / vertExtendVertCount) / (containerWidth / vertExtendHorzCount);
+      console.log('horzExtendRatio=%f  vertExtendRatio=%f', horzExtendRatio, vertExtendRatio)
+      if (horzExtendRatio * HORZ_MODULATE >= vertExtendRatio) {
+        tmpHorzCount = horzExtendHorzCount;
+        tmpVertCount = horzExtendVertCount;
+        if (memberCount <= tmpHorzCount * (tmpVertCount - 1)) {
+          tmpVertCount = tmpVertCount - 1;
+        }
+      }
+      else {
+        tmpHorzCount = vertExtendHorzCount;
+        tmpVertCount = vertExtendVertCount;
+        if (memberCount <= (tmpHorzCount - 1) * tmpVertCount) {
+          tmpHorzCount = tmpHorzCount - 1;
+        }
+      }
+    }
+
+    videoHorzCount = tmpHorzCount;
+    videoVertCount = tmpVertCount;
+
+    console.log('calcVideoHorzVertCountFlex() count=%d, horz=%d, vert=%d', memberCount, videoHorzCount, videoVertCount);
+    // grid-template-columns: repeat(2, 1fr);
+    // grid-template-rows: 100px 1fr;
+    remoteContainer.style.gridTemplateColumns = 'repeat(' + videoHorzCount + ', 1fr)';
+    //remoteContainer.style.gridTemplateRows = '' + videoHeight + 'px 1fr';
+    remoteContainer.style.gridTemplateRows = 'repeat(' + videoVertCount + ', 1fr)';
+
+    return;
+  }
+
+  // ---- zoom ----
+  let zoomElement = null;
+
+  function toggleZoom(element) {
+    if (isZoomElement(element)) {
+      resetZoom();
+    }
+    else {
+      setZoom(element);
+    }
+  }
+
+  function setZoom(element) {
+    if (zoomElement && (zoomElement !== element)) {
+      resetZoom();
+    }
+
+    zoomElement = element;
+    calcVideoLayout();
+  }
+
+  function resetZoom() {
+    if (zoomElement) {
+      zoomElement.style.gridColumnStart = null;
+      zoomElement.style.gridColumnEnd = null;
+      zoomElement.style.gridRowStart = null;
+      zoomElement.style.gridRowEnd = null;
+    }
+
+    zoomElement = null;
+    calcVideoLayout();
+  }
+
+  function isZoomed() {
+    if (zoomElement) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  function isZoomElement(element) {
+    return (zoomElement === element);
+  }
+
+  function calcVideoHorzVertCountWithZoom() {
+    if (!isZoomed()) {
+      console.error('NOT Zoomed.');
+      return;
+    }
+
+    const countTotal = remoteContainer.childElementCount;
+    const countZoom = 1;
+    const countOthers = countTotal - countZoom;
+
+    // -- grid layout --
+    console.log('calcVideoHorzVertCountWithZoom() count=%d, zoom=%d, others=%d', countTotal, countZoom, countOthers);
+    // grid-template-columns: repeat(N-1, 1fr);
+    // grid-template-rows: 80% 1fr;
+    if (countOthers > 0) {
+      remoteContainer.style.gridTemplateColumns = 'repeat(' + countOthers + ', 1fr)';
+      remoteContainer.style.gridTemplateRows = '80% 20%';
+    }
+    else {
+      // -- NO zoom if only 1 remote video --
+      remoteContainer.style.gridTemplateColumns = '100%';
+      remoteContainer.style.gridTemplateRows = '100%';
+    }
+
+    // ----
+    //grid-column-start: 1;
+    //grid-column-end: 11;
+    //grid-row-start: 1;
+    //grid-row-end: 2;
+    //- ----
+
+    // --- zoom element ---
+    zoomElement.style.gridColumnStart = '' + 1;
+    zoomElement.style.gridColumnEnd = '' + (countOthers + 1);
+    zoomElement.style.gridRowStart = '' + 1;
+    zoomElement.style.gridRowEnd = '' + 2;
+  }
+
+  // --------- initialize ------------
+  updateButtons();
+  setupRoomFromUrl();
+  console.log('=== ready ==='); 
+</script>
+
+</html>
