@@ -74,7 +74,7 @@
     &nbsp;
     <input type="text" id="room_name" placeholder="room name" />
     <button id="connect_button" onclick="connect();">Connect</button>
-    <button id="disconnect_button" onclick="dissconnect();">Disconnect</button>
+    <button id="disconnect_button" onclick="disconnect();">Disconnect</button>
   </div>
   <div class="outer_h">
     <div id="local_pannel" class="pannel_h" style="width: 122px;">
@@ -615,7 +615,7 @@
     joinRoom(clientId, localStream);
   }
 
-  function dissconnect() {
+  function disconnect() {
     room.leave(clientId); // not promise
     micProducer = null;
     camProducer = null;
