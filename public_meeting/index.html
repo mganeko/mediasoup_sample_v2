@@ -304,12 +304,42 @@
     }
 
     consumer.on('close', (originator) => {
-      console.log('---- Consumer closed ----', originator, consumer.customTrackKind);
+      const id = consumer.peer.name;
+      console.log('---- Consumer closed ----', id, originator, consumer.customTrackKind);
       if (consumer.customTrackKind === 'screen') {
-        const id = consumer.peer.name;
         removeRemoteScreenVideo(id);
       }
+      else {
+        const video = findRemoteVideo(id);
+        if (!video) {
+          console.warn('WARN: track closed, but no element');
+          return;
+        }
+        if (!video.srcObject) {
+          console.warn('WARN: track closed, but no srcObject');
+          return;
+        }
+
+        // ---- remove video track ---
+        if (consumer.customTrackKind === 'video') {
+          console.log('remove track (%s) from videoElement', consumer.customTrackKind);
+          video.srcObject.getVideoTracks().forEach(track => {
+            video.srcObject.removeTrack(track);
+          });
+          const lastPoster = video.poster;
+          video.poster = '';
+          video.poster = lastPoster;
+        }
+        else if (consumer.customTrackKind === 'audio') {
+          // --- remove audio track --
+          console.log('remove track (%s) from videoElement', consumer.customTrackKind);
+          video.srcObject.getAudioTracks().forEach(track => {
+            video.srcObject.removeTrack(track);
+          });
+        }
+      }
     });
+
 
     consumer.on('pause', (originator, appData) => {
       console.log('-- Consumer paused --');
