@@ -1,0 +1,734 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="charset=UTF-8" />
+  <title>mediasoup v2 multi-room 1way cast</title>
+  <!--
+   // mediasoup_sample_v2
+   //   https://github.com/mganeko/mediasoup_sample_v2
+   //   mediasoup_sample is provided under MIT license
+   //
+   //   This sample is using https://github.com/versatica/mediasoup
+   //   This sample is based on https://github.com/footniko/mediasoup-sample
+ -->
+  <script>
+  //window.localStorage.setItem('debug', 'mediasoup-client:WARN* mediasoup-client:ERROR*');
+  </script>
+  <script src="js/mediasoup-client.min.js"></script>
+  <script src="js/room_options.js"></script>
+  <script src="socket.io/socket.io.js"></script>
+  <style>
+    .bar {
+      border: rgb(223, 223, 223) solid 1px;
+      height: 50px;
+      background-color: rgb(230, 230, 230);
+    }
+
+    .outer_h {
+      display: grid;
+      grid-template-columns: 124px 1fr;
+      grid-template-rows: 1fr;
+    }
+
+    .pannel_h {
+      height: 100%;
+      width: 242px;
+    }
+
+    .outer_v {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: 100px 1fr;
+    }
+
+    .pannel_v {
+      border: red solid 1px;
+      width: 100%;
+    }
+
+    .wrapper {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: 100px 1fr;
+      column-gap: 4px;
+      row-gap: 4px;
+    }
+
+    .remote_video {
+      border: rgb(192, 192, 192) solid 1px;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+
+<body onload="calcVideoHorzVertCount(); resizeVideo()" onresize="resizeVideo()">
+  <div id="button_bar" class="bar">
+    mediasoup v2 multi-room sample, 1 way screen-cast side
+    <br />
+    <input type="checkbox" id="audio_check">with audio</input>
+    <button id="start_video_button" onclick="mediaDeviceCaptureDisplay();">Start Media</button>
+    <button id="stop_video_button" onclick="stopMedia();">Stop Media</button>
+    &nbsp;
+    <input type="text" id="room_name" placeholder="room name" />
+    <button id="connect_button" onclick="connect();">Connect</button>
+    <button id="disconnect_button" onclick="dissconnect();">Disconnect</button>
+  </div>
+  <div class="outer_h">
+    <div id="local_pannel" class="pannel_h" style="width: 242px;">
+      local video<br />
+      <video id="local_video" autoplay style="width: 240px; height: 180px; border: 1px solid black;"></video>
+      <span id="state_span"></span>
+      <br />
+      <button id="start_screen_button" onclick="startScreenShare();">Add Screen</button>
+      <button id="stop_screen_button" onclick="stopScreenShare();">Remove Screen</button>
+      <video id="screen_video" autoplay style="width: 240px; height: 180px; border: 1px solid black;"></video>
+
+    </div>
+    <!-- NO remote video<br /> -->
+    <div id="remote_container" class="wrapper" style="display:none; width: 122px;">
+    </div>
+  </div>
+</body>
+<script>
+  const localVideo = document.getElementById('local_video');
+  const audioCheck = document.getElementById('audio_check');
+  const screenVideo = document.getElementById('screen_video');
+  const remoteContainer = document.getElementById('remote_container');
+  //const remoteVideo = document.getElementById('remote_video');
+  const stateSpan = document.getElementById('state_span');
+  const roomName = document.getElementById('room_name');
+  /*
+  const micList = document.getElementById("mic_list");
+  const cameraList = document.getElementById("camera_list");
+  const videoSizeList = document.getElementById("video_size_list");
+  */
+
+  let localStream = null;
+  let screenStream = null;
+  let clientId = null;
+  //let roomId = 'anther_room';
+
+  // =========== socket.io ========== 
+  let socket = null;
+
+  // return Promise
+  function connectSocket() {
+    if (socket) {
+      socket.close();
+      socket = null;
+      clientId = null;
+    }
+
+    return new Promise((resolve, reject) => {
+      socket = io.connect('/');
+      socket.on('connect', function (evt) {
+        //console.log('socket.io connected. enter room=' + room );
+        //socket.emit('enter', room);
+        console.log('socket.io connected()');
+        //resolve();
+      });
+      socket.on('error', function (err) {
+        console.error('socket.io ERROR:', err);
+        reject(err);
+      });
+      socket.on('disconnect', function (evt) {
+        console.log('socket.io disconnect:', evt);
+      });
+      socket.on('message', function (message) {
+        console.log('socket.io message:', message);
+        if (message.type === 'welcome') {
+          if (socket.id !== message.id) {
+            console.warn('WARN: something wrong with clientID', socket.io, message.id);
+          }
+
+          clientId = message.id;
+          console.log('connected to server. clientId=' + clientId);
+          resolve();
+        }
+        else if (message.type === 'server_notify') {
+          const notification = message.notification;
+          console.debug('New notification came from server:', notification);
+          room.receiveNotification(notification);
+        }
+        else {
+          console.error('UNKNOWN message from server:', message);
+        }
+      });
+    });
+  }
+
+  function disconnectSocket() {
+    if (socket) {
+      socket.close();
+      socket = null;
+      clientId = null;
+      console.log('socket.io closed..');
+    }
+  }
+
+  function sendRequest(request, callback, errback) {
+    socket.emit('client_request', request, (err, response) => {
+      if (!err) {
+        // Success response, so pass the mediasoup response to the local Room.
+        callback(response);
+      } else {
+        errback(err);
+      }
+    });
+  }
+
+  function sendNotify(notification) {
+    socket.emit('client_notify', notification);
+  }
+
+  function prepareRoom(roomId) {
+    socket.emit('prepare_room', roomId);
+  }
+
+  // =========== mediasoup ========== 
+  console.log('=== Mediasoup Device support:', mediasoupClient.isDeviceSupported());
+  const room = new mediasoupClient.Room(roomOptions);
+  let micProducer = null;
+  let camProducer = null;
+  let screenProducer = null;
+  let sendTransport = null;
+  let recvTransport = null;
+
+  room.on('request', function (request, callback, errback) {
+    console.log('--- on request, method=' + request.method);
+    console.log(request);
+    sendRequest(request, callback, errback);
+  });
+  room.on('notify', function (notification) {
+    console.log('--- notify from local room:', notification);
+    sendNotify(notification);
+
+  });
+  room.on('newpeer', function (peer) {
+    console.log('=== newpeer ====');
+    handlePeer(peer);
+  });
+
+
+  function joinRoom(peername, stream, anotherStream) {
+    if (room.joined) {
+      console.warn('ALREADY joining room');
+      return;
+    }
+
+    room.join(peername)
+      .then((peers) => {
+        console.info("room joined:", peers);
+        updateButtons();
+
+        // --- sendonly ---
+        // Create a Transport for sending local media.
+        sendTransport = room.createTransport('send');
+
+        // --- setup peers ---
+        peers.forEach(peer => handlePeer(peer));
+
+        console.log('--peers setup end --');
+      })
+      .then(() => {
+        console.log('-- add local stream --');
+        // ---- add local stream ---
+        const audioTrack = stream.getAudioTracks()[0];
+        const videoTrack = stream.getVideoTracks()[0];
+
+        // Send local audio.
+        if (audioTrack) {
+          micProducer = room.createProducer(audioTrack);
+          micProducer.send(sendTransport);
+        }
+
+        // Send local video.
+        if (videoTrack) {
+          camProducer = room.createProducer(videoTrack);
+          camProducer.send(sendTransport);
+        }
+
+        // send another video stream
+        if (anotherStream) {
+          sendScreenStream(anotherStream);
+        }
+      })
+      .catch(err => {
+        console.error('catch error ater room.join()', err);
+      });
+  }
+
+  function handlePeer(peer) {
+    // --- setup consumers ---
+    const consumers = peer.consumers;
+    if (consumers.length > 0) {
+      console.warn('consumers SHOULD BE zero');
+    }
+    // -- DO NOT receive --
+    //consumers.forEach(consumer => handleConsumer(consumer));
+
+    peer.on('close', function () {
+      console.log('--- remote peer clolsed. name/id=' + peer.name);
+    });
+
+    peer.on('newconsumer', function (consumer) {
+      console.log('--newconsumer');
+
+      // -- DO NOT receive --
+      console.warn('new consumer, BUT IGNORE');
+      //handleConsumer(consumer);
+    });
+  }
+
+  // =========== media handling ========== 
+  function stopLocalStream(stream) {
+    let tracks = stream.getTracks();
+    if (!tracks) {
+      console.warn('NO tracks');
+      return;
+    }
+
+    tracks.forEach(track => track.stop());
+  }
+
+  // return Promise
+  function playVideo(element, stream) {
+    if (element.srcObject) {
+      console.warn('element ALREADY playing, so ignore');
+      return;
+    }
+    element.srcObject = stream;
+    element.volume = 0;
+    return element.play();
+  }
+
+  function pauseVideo(element) {
+    element.pause();
+    element.srcObject = null;
+  }
+
+  // ============ UI button ==========
+
+  function withAudio() {
+    return audioCheck.checked;
+  }
+
+  async function mediaDeviceCaptureDisplay() {
+    //const option = {video: true};
+    //const option = { video: { frameRate: 1 }, audio: withAudio() }; // OK (Chrome 74)
+    const option = { video: true, audio: withAudio() }; // OK (Chrome 74)
+    console.log('getDisplayMedia() option:', option);
+
+    try {
+      localStream = await navigator.mediaDevices.getDisplayMedia(option);
+      playVideo(localVideo, localStream);
+      console.log('mediaDevice.getDisplayMedia　Screen Capture OK');
+      updateButtons();
+    } catch (err) {
+      console.error('mediaDevice.getDisplayMedia() error:', err);
+    }
+  }
+
+
+  function startMedia() {
+    if (localStream) {
+      console.warn('WARN: local media ALREADY started');
+      return;
+    }
+
+    //const constraints = { audio: true, video: true };
+    const constraints = getSelectedMediaConstraints();
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then((stream) => {
+        localStream = stream;
+        playVideo(localVideo, localStream);
+        updateButtons();
+
+        // --- store selected device id ---
+        storeSelectedDevice(constraints.video.deviceId, constraints.audio.deviceId);
+
+        // -- check --
+        const videoId = loadLastVideoDevice();
+        const audioId = loadLastAudioDevice();
+
+        if ((videoId === constraints.video.deviceId) && (audioId === constraints.audio.deviceId)) {
+          console.log('store, load OK. video=%s, audio=%s', videoId, audioId);
+        }
+        else {
+          console.error('store/load ERROR, video=%s , %s  audio=%s , %s',
+            constraints.video.deviceId, videoId, constraints.audio.deviceId, audioId
+          );
+        }
+      })
+      .catch(err => {
+        console.error('media ERROR:', err);
+      });
+  }
+
+  function stopMedia() {
+    if (localStream) {
+      pauseVideo(localVideo);
+      stopLocalStream(localStream);
+      localStream = null;
+    }
+
+    if (screenStream) {
+      pauseVideo(screenVideo);
+      stopLocalStream(screenStream);
+      screenStream = null;
+    }
+
+    updateButtons();
+  }
+
+  async function connect() {
+    if (!localStream) {
+      console.warn('WARN: local media NOT READY');
+      return;
+    }
+
+    // --- connect socket.io ---
+    await connectSocket().catch(err => {
+      console.error(err);
+      return;
+    });
+
+    // --- prepare room ---
+    let roomName = getRoomName();
+    if ((roomName) && (roomName !== '')) {
+      console.log('prepareRoom roomName=' + roomName);
+      prepareRoom(roomName);
+    }
+
+    // --- join room ---
+    console.log('try join room as:' + clientId);
+    joinRoom(clientId, localStream, screenStream);
+  }
+
+  function dissconnect() {
+    room.leave(clientId); // not promise
+    micProducer = null;
+    camProducer = null;
+    screenProducer = null;
+    sendTransport = null;
+    recvTransport = null;
+
+    disconnectSocket();
+    updateButtons();
+  }
+
+  function getRoomName() {
+    const name = roomName.value;
+    return name;
+  }
+
+  function startScreenShare() {
+    if (screenStream) {
+      console.warn('Screen ALREADY captured');
+      return;
+    }
+
+    navigator.mediaDevices.getDisplayMedia({ video: true })
+      .then(stream => {
+        screenStream = stream;
+        playVideo(screenVideo, screenStream);
+        sendScreenStream(stream);
+
+        updateButtons();
+      })
+      .catch(err => {
+        console.error('media ERROR:', err);
+      })
+  }
+
+  function sendScreenStream(stream) {
+    if (room.joined) {
+      // ---- send screen stream ---
+      const videoTrack = stream.getVideoTracks()[0];
+      screenProducer = room.createProducer(videoTrack);
+      screenProducer.appData = 'screen';
+      screenProducer.send(sendTransport)
+        .then(evt => console.log('start screen send:', evt))
+        .catch(err => console.error('screen send ERROR:', err));
+    }
+  }
+
+  function stopScreenShare() {
+    if (screenProducer) {
+      screenProducer.close('close_screen');
+      screenProducer = null;
+    }
+
+    if (screenStream) {
+      pauseVideo(screenVideo);
+      stopLocalStream(screenStream);
+      screenStream = null;
+    }
+    updateButtons();
+  }
+
+  // ---- UI control ----
+  function updateButtons() {
+    if (room.joined) {
+      disableElement('start_video_button');
+      disableElement('stop_video_button');
+      disableElement('connect_button');
+      enabelElement('disconnect_button');
+      disableElement('room_name');
+      disableElement('video_size_list');
+
+      disableElement('devices_button');
+      disableElement('camera_list');
+      disableElement('mic_list');
+    }
+    else {
+      disableElement('disconnect_button');
+      if (localStream) {
+        disableElement('start_video_button');
+        enabelElement('stop_video_button');
+        enabelElement('connect_button');
+        disableElement('video_size_list');
+
+        disableElement('devices_button');
+        disableElement('camera_list');
+        disableElement('mic_list');
+      }
+      else {
+        enabelElement('start_video_button');
+        disableElement('stop_video_button');
+        disableElement('connect_button');
+        enabelElement('video_size_list');
+
+        enabelElement('devices_button');
+        enabelElement('camera_list');
+        enabelElement('mic_list');
+      }
+
+      if (isRoomSpecifiedByUrl()) {
+        disableElement('room_name');
+      }
+      else {
+        enabelElement('room_name');
+      }
+    }
+
+    if (room.joined) {
+      if (screenStream) {
+        disableElement('start_screen_button');
+        enabelElement('stop_screen_button');
+      }
+      else {
+        enabelElement('start_screen_button');
+        disableElement('stop_screen_button');
+      }
+    }
+    else {
+      disableElement('start_screen_button');
+      disableElement('stop_screen_button');
+    }
+  }
+
+  function enabelElement(id) {
+    let element = document.getElementById(id);
+    if (element) {
+      element.removeAttribute('disabled');
+    }
+  }
+
+  function disableElement(id) {
+    let element = document.getElementById(id);
+    if (element) {
+      element.setAttribute('disabled', '1');
+    }
+  }
+
+
+  function getRoomFromUrl() {
+    const search = window.location.search;
+    const re = new RegExp('room=([^&=]+)');
+    const results = re.exec(search);
+    let room = '';
+    if (results) {
+      room = results[1];
+    }
+    return room;
+  }
+
+  function isRoomSpecifiedByUrl() {
+    let room = getRoomFromUrl();
+    if ((room) && (room !== '')) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  function setupRoomFromUrl() {
+    let room = getRoomFromUrl();
+    if ((room) && (room !== '')) {
+      roomName.value = room;
+    }
+  }
+
+  /*---
+  // ---- device list ----
+  function clearDeviceList() {
+    while (micList.lastChild) {
+      micList.removeChild(micList.lastChild);
+    }
+    while (cameraList.lastChild) {
+      cameraList.removeChild(cameraList.lastChild);
+    }
+  }
+
+  function addDevice(device) {
+    if (device.kind === 'audioinput') {
+      const id = device.deviceId;
+      const label = device.label || 'microphone'; // label is available for https 
+      const option = document.createElement('option');
+      option.setAttribute('value', id);
+      option.innerHTML = label; // + '(' + id + ')';;
+      micList.appendChild(option);
+    }
+    else if (device.kind === 'videoinput') {
+      const id = device.deviceId;
+      const label = device.label || 'camera'; // label is available for https 
+      const option = document.createElement('option');
+      option.setAttribute('value', id);
+      option.innerHTML = label; // + '(' + id + ')';
+      cameraList.appendChild(option);
+    }
+    else if (device.kind === 'audiooutput') {
+      const id = device.deviceId;
+      const label = device.label || 'speaker'; // label is available for https 
+      console.log('SKIP audiooutput:' + label + '(' + id + ')');
+    }
+    else {
+      console.error('UNKNOWN Device kind:' + device.kind);
+    }
+  }
+
+  function getDeviceList() {
+    clearDeviceList();
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then(function (stream) {
+        stopLocalStream(stream);
+        navigator.mediaDevices.enumerateDevices()
+          .then(function (devices) {
+            devices.forEach(function (device) {
+              console.log(device.kind + ": " + device.label +
+                " id = " + device.deviceId);
+              addDevice(device);
+            });
+
+            // -- restore last select --
+            restoreLastSelectedDevice();
+          })
+          .catch(function (err) {
+            console.error('enumerateDevide ERROR:', err);
+          });
+      })
+      .catch(function (err) {
+        console.error('getUserMedia(), enumerateDevide ERROR:', err);
+      });
+  }
+
+  function getSelectedVideo() {
+    const id = cameraList.options[cameraList.selectedIndex].value;
+    return id;
+  }
+
+  function getSelectedAudio() {
+    const id = micList.options[micList.selectedIndex].value;
+    return id;
+  }
+
+  function getSelectedVideoSizeConstraints() {
+    const size = videoSizeList.options[videoSizeList.selectedIndex].value;
+    let sizeConstraints = {};
+    if (size === 'HD') {
+      sizeConstraints = { width: 1280, height: 720 };
+    }
+    else if (size === 'FHD') {
+      sizeConstraints = { width: 1920, height: 1080 };
+    }
+    else {
+      // VGA
+      sizeConstraints = { width: 640, height: 480 };
+    }
+
+    return sizeConstraints;
+  }
+
+  function getSelectedMediaConstraints() {
+    const audioId = getSelectedAudio();
+    const deviceId = getSelectedVideo();
+    const videoSize = getSelectedVideoSizeConstraints();
+    console.log('selected video device id=' + deviceId + ' ,  audio=' + audioId + ', size=' + videoSize.width + ',' + videoSize.height);
+    const constraints = {
+      audio: {
+        deviceId: audioId
+      },
+      video: {
+        deviceId: deviceId,
+        width: videoSize.width,
+        height: videoSize.height
+      }
+    };
+
+    return constraints;
+  }
+
+  function storeSelectedDevice(idVideo, idAudio) {
+    localStorage.setItem('lastVideoDeviceId', idVideo);
+    localStorage.setItem('lastAudioDeviceId', idAudio);
+  }
+
+  function loadLastVideoDevice() {
+    const id = localStorage.getItem('lastVideoDeviceId');
+    return id;
+  }
+
+  function loadLastAudioDevice() {
+    const id = localStorage.getItem('lastAudioDeviceId');
+    return id;
+  }
+
+  function restoreLastSelectedDevice() {
+    const videoDeviceId = loadLastVideoDevice();
+    const audioDevideId = loadLastAudioDevice();
+
+    cameraList.value = videoDeviceId;
+    if (cameraList.selectedIndex < 0) {
+      cameraList.selectedIndex = 0;
+    }
+    micList.value = audioDevideId;
+    if (micList.selectedIndex < 0) {
+      micList.selectedIndex = 0;
+    }
+  }
+  ---*/
+
+  // ---- resize remote video -------
+  let videoHorzCount = 1;
+  let videoVertCount = 1;
+  function resizeVideo() {
+    // -- DO nothing --
+    return;
+  }
+
+  function calcVideoHorzVertCount() {
+    // -- DO nothing --
+    return;
+  }
+
+  updateButtons();
+  setupRoomFromUrl();
+  console.log('=== ready ==='); 
+</script>
+
+</html>
