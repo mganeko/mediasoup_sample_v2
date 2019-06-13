@@ -68,14 +68,13 @@
   <div id="button_bar" class="bar" style="height:50px;">
     mediasoup v2 meeting with socket.io, multi-room
     <br />
+    <button id="start_video_button" onclick="startVideo();">Start Video</button>
+    <button id="start_audio_button" onclick="startAudioOnly();">Start Audio only</button>
+    <button id="stop_video_button" onclick="stopMedia();">Stop Media</button>
+    &nbsp;
     <input type="text" id="room_name" placeholder="room name" />
-    &nbsp;
-    <button id="start_video_button" onclick="connectVideo();">Connect Video</button>
-    <button id="start_audio_button" onclick="connectAudioOnly();">Connect Audio only</button>
-    <button id="stop_video_button" onclick="stopMedia();" style="display:none;">Stop Media</button>
-    &nbsp;
-    <button id="connect_button" onclick="connect();" style="display:none;">Connect</button>
-    <button id="disconnect_button" onclick="disconnectMedia();">Disconnect</button>
+    <button id="connect_button" onclick="connect();">Connect</button>
+    <button id="disconnect_button" onclick="disconnect();">Disconnect</button>
   </div>
   <div class="outer_h">
     <div id="local_pannel" class="pannel_h" style="width: 122px;">
@@ -341,6 +340,7 @@
       }
     });
 
+
     consumer.on('pause', (originator, appData) => {
       console.log('-- Consumer paused --');
       const id = consumer.peer.name;
@@ -523,40 +523,6 @@
   }
 
   // ============ UI button ==========
-  function connectVideo() {
-    const mediaConstraints = { audio: true, video: true };
-    connectMedia(mediaConstraints);
-  }
-
-  function connectAudioOnly() {
-    const mediaConstraints = { audio: true, video: false };
-    connectMedia(mediaConstraints);
-  }
-
-  function connectMedia(constraints) {
-    if (localStream) {
-      console.warn('WARN: local media ALREADY started. But try connect');
-      connect();
-      return;
-    }
-
-    navigator.mediaDevices.getUserMedia(constraints)
-      .then((stream) => {
-        localStream = stream;
-        playVideo(localVideo, localStream)
-          .then(() => {
-            toggleMute();
-            connect();
-          })
-          .catch(err => console.error(err));
-
-        updateButtons();
-      })
-      .catch(err => {
-        console.error('media ERROR:', err);
-      });
-  }
-
   function startVideo() {
     const mediaConstraints = { audio: true, video: true };
     startMedia(mediaConstraints);
@@ -660,13 +626,6 @@
     disconnectSocket();
     updateButtons();
   }
-
-  function disconnectMedia() {
-    disconnect();
-    stopMedia();
-    updateButtons();
-  }
-
 
   function getRoomName() {
     const name = roomName.value;
