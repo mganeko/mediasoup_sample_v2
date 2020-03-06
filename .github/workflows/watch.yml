@@ -20,4 +20,4 @@ jobs:
     steps:
     # Runs a single command using the runners shell
     - name: Run curl
-      run: curl https://sfu.talkin.info/
+      run: curl https://sfung.talkin.info/
