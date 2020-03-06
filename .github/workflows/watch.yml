@@ -31,4 +31,4 @@ jobs:
     steps:
     # Runs a single command using the runners shell
     - name: check talkin
-      run: curl https://ng.talkin.info/
+      run: curl https://talkin.info/
