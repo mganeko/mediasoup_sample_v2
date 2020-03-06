@@ -42,6 +42,6 @@ jobs:
     steps:
     # Runs a single command using the runners shell
     - name: check turn
-      run: curl http://turnng.talkin.info
+      run: curl http://turn.talkin.info
 
 
