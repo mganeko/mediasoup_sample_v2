@@ -6,7 +6,7 @@ name: http-monitor
 # events but only for the master branch
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/30 * * * *'
   push:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
@@ -19,5 +19,16 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Runs a single command using the runners shell
-    - name: Run curl
-      run: curl https://sfung.talkin.info/
+    - name: check sfu
+      run: curl https://sfu.talkin.info/
+
+  # This workflow contains a single job called "watch-sfu"
+  watch-talkin:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Runs a single command using the runners shell
+    - name: check talkin
+      run: curl https://talkin.info/
