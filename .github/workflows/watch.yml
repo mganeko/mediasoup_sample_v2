@@ -22,7 +22,7 @@ jobs:
     - name: check sfu
       run: curl https://sfu.talkin.info/
 
-  # This workflow contains a single job called "watch-sfu"
+  # This workflow contains a single job called "watch-talkin"
   watch-talkin:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
@@ -32,3 +32,16 @@ jobs:
     # Runs a single command using the runners shell
     - name: check talkin
       run: curl https://talkin.info/
+
+  # This workflow contains a single job called "watch-turn"
+  watch-turn:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Runs a single command using the runners shell
+    - name: check turn
+      run: curl http://turnng.talkin.info
+
+
