@@ -62,7 +62,7 @@ jobs:
     # Runs a single command using the runners shell
     - name: check turn
       env:
-        URL: ${{ secrets._URL }}
+        URL: ${{ secrets.TURN_URL }}
       run: curl $URL
     - name: Slack Notification
       if: failure()
