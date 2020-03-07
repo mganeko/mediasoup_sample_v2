@@ -26,6 +26,7 @@ jobs:
       if: failure()
       uses: rtCamp/action-slack-notify@v2.0.0
       env:
+        SLACK_COLOR: '#c02020'
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         SLACK_MESSAGE: 'SFU maybe down. Plase check it.'
 
