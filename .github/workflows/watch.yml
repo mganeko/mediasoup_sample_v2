@@ -39,7 +39,7 @@ jobs:
     steps:
     # Runs a single command using the runners shell
     - name: check talkin
-      run: curl https://talkin.info/
+      run: curl https://ng.talkin.info/
     - name: Slack Notification
       if: failure()
       uses: rtCamp/action-slack-notify@v2.0.0
@@ -57,7 +57,7 @@ jobs:
     steps:
     # Runs a single command using the runners shell
     - name: check turn
-      run: curl http://turn.talkin.info
+      run: curl http://turn-ng.talkin.info
     - name: Slack Notification
       if: failure()
       uses: rtCamp/action-slack-notify@v2.0.0
