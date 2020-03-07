@@ -21,7 +21,7 @@ jobs:
     steps:
     # Runs a single command using the runners shell
     - name: check sfu
-      run: curl https://sfu-ng.talkin.info/
+      run: curl https://sfu.talkin.info/
     - name: Slack Notification
       if: failure()
       uses: rtCamp/action-slack-notify@v2.0.0
@@ -40,6 +40,13 @@ jobs:
     # Runs a single command using the runners shell
     - name: check talkin
       run: curl https://talkin.info/
+    - name: Slack Notification
+      if: failure()
+      uses: rtCamp/action-slack-notify@v2.0.0
+      env:
+        SLACK_COLOR: '#c02020'
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_MESSAGE: 'talkin.info Web maybe down. Plase check it.'
 
   # This workflow contains a single job called "watch-turn"
   watch-turn:
@@ -51,5 +58,11 @@ jobs:
     # Runs a single command using the runners shell
     - name: check turn
       run: curl http://turn.talkin.info
-
+    - name: Slack Notification
+      if: failure()
+      uses: rtCamp/action-slack-notify@v2.0.0
+      env:
+        SLACK_COLOR: '#c02020'
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_MESSAGE: 'TURN maybe down. Plase check it.'
 
