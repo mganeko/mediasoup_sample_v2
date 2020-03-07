@@ -22,8 +22,8 @@ jobs:
     # Runs a single command using the runners shell
     - name: check sfu
       env:
-        URL: $${{ secrets.SFU_URL }}
-      run: curl URL
+        URL: ${{ secrets.SFU_URL }}
+      run: echo $URL
     - name: Slack Notification
       if: failure()
       uses: rtCamp/action-slack-notify@v2.0.0
@@ -42,8 +42,8 @@ jobs:
     # Runs a single command using the runners shell
     - name: check web
       env:
-        URL: $${{ secrets.WEB_URL }}
-      run: curl URL
+        URL: ${{ secrets.WEB_URL }}
+      run: curl https://www.google.com/
     - name: Slack Notification
       if: failure()
       uses: rtCamp/action-slack-notify@v2.0.0
@@ -62,8 +62,8 @@ jobs:
     # Runs a single command using the runners shell
     - name: check turn
       env:
-        URL: $${{ secrets.TURN_URL }}
-      run: curl URL
+        URL: ${{ secrets.TURN_URL }}
+      run: echo $URL
     - name: Slack Notification
       if: failure()
       uses: rtCamp/action-slack-notify@v2.0.0
