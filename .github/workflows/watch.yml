@@ -23,7 +23,7 @@ jobs:
     - name: check sfu
       env:
         URL: $${{ secrets.SFU_URL }}
-      run: curl $URL
+      run: curl URL
     - name: Slack Notification
       if: failure()
       uses: rtCamp/action-slack-notify@v2.0.0
@@ -40,17 +40,17 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Runs a single command using the runners shell
-    - name: check talkin
+    - name: check web
       env:
         URL: $${{ secrets.WEB_URL }}
-      run: curl $URL
+      run: curl URL
     - name: Slack Notification
       if: failure()
       uses: rtCamp/action-slack-notify@v2.0.0
       env:
         SLACK_COLOR: '#c02020'
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-        SLACK_MESSAGE: 'talkin Web maybe down. Plase check it.'
+        SLACK_MESSAGE: 'Web maybe down. Plase check it.'
 
   # This workflow contains a single job called "watch-turn"
   watch-turn:
@@ -63,7 +63,7 @@ jobs:
     - name: check turn
       env:
         URL: $${{ secrets.TURN_URL }}
-      run: curl $URL
+      run: curl URL
     - name: Slack Notification
       if: failure()
       uses: rtCamp/action-slack-notify@v2.0.0
