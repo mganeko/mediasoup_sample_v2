@@ -9,6 +9,7 @@ on:
     - cron: '*/30 * * * *'
   push:
 
+
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "watch-sfu"
@@ -21,6 +22,12 @@ jobs:
     # Runs a single command using the runners shell
     - name: check sfu
       run: curl https://sfu.talkin.info/
+    - name: Slack Notification
+      if: failure()
+      uses: rtCamp/action-slack-notify@v2.0.0
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_MESSAGE: 'SFU maybe down. Plase check it.'
 
   # This workflow contains a single job called "watch-talkin"
   watch-talkin:
