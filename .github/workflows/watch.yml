@@ -71,11 +71,11 @@ jobs:
         SLACK_COLOR: '#c02020'
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         SLACK_MESSAGE: 'TURN maybe down. Plase check it.'
-    - name: post test
-      env:
-        POST_TYPE: 'Content-type: application/json'
-        POST_DATA: '{"text":"Hello, this is test by MG with CURL"}'
-      run: curl -X POST -H "$POST_TYPE" --data "$POST_DATA" ${{ secrets.SLACK_WEBHOOK }}
+    #- name: post test
+    #  env:
+    #    POST_TYPE: 'Content-type: application/json'
+    #    POST_DATA: '{"text":"Hello, this is test by MG with CURL"}'
+    #  run: curl -X POST -H "$POST_TYPE" --data "$POST_DATA" ${{ secrets.SLACK_WEBHOOK }}
 
     
 
