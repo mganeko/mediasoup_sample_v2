@@ -74,8 +74,8 @@ jobs:
     - name: post test
       env:
         POST_TYPE: 'Content-type: application/json'
-        POST_DATA: '{"text":"Hello, this is test by MG"}'
-      run: curl -X POST -H '$POST_TYPE' --data '$POST_DATA' ${{ secrets.SLACK_WEBHOOK }}
+        POST_DATA: '{"text":"Hello, this is test by MG with CURL"}'
+      run: curl -X POST -H "$POST_TYPE" --data "$POST_DATA" ${{ secrets.SLACK_WEBHOOK }}
 
     
 
