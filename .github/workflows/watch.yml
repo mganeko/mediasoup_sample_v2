@@ -6,7 +6,7 @@ name: http-monitor
 # events but only for the master branch
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/60 * * * *'
   push:
 
 
