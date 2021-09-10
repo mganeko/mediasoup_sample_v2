@@ -32,50 +32,50 @@ jobs:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         SLACK_MESSAGE: 'SFU maybe down. Plase check it.'
 
-  # This workflow contains a single job called "watch-talkin"
-  watch-talkin:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+  ## This workflow contains a single job called "watch-talkin"
+  #watch-talkin:
+  #  # The type of runner that the job will run on
+  #  runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-    # Runs a single command using the runners shell
-    - name: check web
-      env:
-        URL: ${{ secrets.WEB_URL }}
-      run: curl $URL
-    - name: Slack Notification
-      if: failure()
-      uses: rtCamp/action-slack-notify@v2.0.0
-      env:
-        SLACK_COLOR: '#c02020'
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-        SLACK_MESSAGE: 'Web maybe down. Plase check it.'
+  #  # Steps represent a sequence of tasks that will be executed as part of the job
+  #  steps:
+  #  # Runs a single command using the runners shell
+  #  - name: check web
+  #    env:
+  #      URL: ${{ secrets.WEB_URL }}
+  #    run: curl $URL
+  #  - name: Slack Notification
+  #    if: failure()
+  #    uses: rtCamp/action-slack-notify@v2.0.0
+  #    env:
+  #      SLACK_COLOR: '#c02020'
+  #      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+  #      SLACK_MESSAGE: 'Web maybe down. Plase check it.'
 
-  # This workflow contains a single job called "watch-turn"
-  watch-turn:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+  ## This workflow contains a single job called "watch-turn"
+  #watch-turn:
+  #  # The type of runner that the job will run on
+  #  runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-    # Runs a single command using the runners shell
-    - name: check turn
-      env:
-        URL: ${{ secrets.TURN_URL }}
-      run: curl $URL
-    - name: Slack Notification
-      if: failure()
-      uses: rtCamp/action-slack-notify@v2.0.0
-      env:
-        SLACK_COLOR: '#c02020'
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-        SLACK_MESSAGE: 'TURN maybe down. Plase check it.'
-    #- name: post test
-    #  env:
-    #    POST_TYPE: 'Content-type: application/json'
-    #    POST_DATA: '{"text":"Hello, this is test by MG with CURL"}'
-    #  run: curl -X POST -H "$POST_TYPE" --data "$POST_DATA" ${{ secrets.SLACK_WEBHOOK }}
+  #  # Steps represent a sequence of tasks that will be executed as part of the job
+  #  steps:
+  #  # Runs a single command using the runners shell
+  #  - name: check turn
+  #    env:
+  #      URL: ${{ secrets.TURN_URL }}
+  #    run: curl $URL
+  #  - name: Slack Notification
+  #    if: failure()
+  #    uses: rtCamp/action-slack-notify@v2.0.0
+  #    env:
+  #      SLACK_COLOR: '#c02020'
+  #      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+  #      SLACK_MESSAGE: 'TURN maybe down. Plase check it.'
+  #  #- name: post test
+  #  #  env:
+  #  #    POST_TYPE: 'Content-type: application/json'
+  #  #    POST_DATA: '{"text":"Hello, this is test by MG with CURL"}'
+  #  #  run: curl -X POST -H "$POST_TYPE" --data "$POST_DATA" ${{ secrets.SLACK_WEBHOOK }}
 
     
 
